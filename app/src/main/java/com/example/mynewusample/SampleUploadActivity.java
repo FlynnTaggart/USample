@@ -5,6 +5,7 @@ import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 
 import android.app.Activity;
 import android.content.Context;
@@ -27,6 +28,7 @@ import android.widget.LinearLayout;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.squareup.picasso.Picasso;
 
 import java.io.IOException;
 
@@ -35,7 +37,7 @@ public class SampleUploadActivity extends AppCompatActivity {
     private TextInputLayout textInputName;
     private TextInputLayout textInputFileName;
     private TextInputLayout textInputNote;
-    private LinearLayout chooseCoverLinerLayout;
+    private CardView cardViewCover;
     private ImageView imageViewCover;
     private ImageView imageViewCoverIcon;
     private Button buttonChooseFile;
@@ -51,11 +53,12 @@ public class SampleUploadActivity extends AppCompatActivity {
         textInputName = findViewById(R.id.textFieldName);
         textInputFileName = findViewById(R.id.textFieldFileName);
         textInputNote = findViewById(R.id.textFieldNote);
-        chooseCoverLinerLayout = findViewById(R.id.linearLayoutChooseCover);
+        cardViewCover = findViewById(R.id.cardViewCover);
         imageViewCover = findViewById(R.id.imageViewCover);
         imageViewCoverIcon = findViewById(R.id.imageViewCoverIcon);
         buttonChooseFile = findViewById(R.id.buttonChooseFile);
         buttonUpload = findViewById(R.id.buttonUpload);
+
 
         ActivityResultLauncher<Intent> chooseFileActivityResultLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -89,18 +92,19 @@ public class SampleUploadActivity extends AppCompatActivity {
                             Intent data = result.getData();
                             Uri imageUri = data.getData();
                             try {
-                                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
+                                Picasso.get().load(imageUri).resize(256, 256).centerCrop().into(imageViewCover);
+//                                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
                                 imageViewCover.setVisibility(View.VISIBLE);
                                 imageViewCoverIcon.setVisibility(View.GONE);
-                                imageViewCover.setImageBitmap(bitmap);
-                            } catch (IOException e) {
+//                                imageViewCover.setImageBitmap(bitmap);
+                            } catch (Exception e) {
                                 e.printStackTrace();
                             }
                         }
                     }
                 });
 
-        chooseCoverLinerLayout.setOnClickListener(new View.OnClickListener() {
+        cardViewCover.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);

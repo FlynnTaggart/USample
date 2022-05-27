@@ -29,7 +29,7 @@
             android:visibility="gone"/>
     </com.google.android.material.appbar.AppBarLayout>
 
-    <androidx.core.widget.NestedScrollView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="com.google.android.material.appbar.AppBarLayout$ScrollingViewBehavior">
@@ -48,14 +48,15 @@
                 app:counterEnabled="true"
                 app:counterMaxLength="30"
                 android:layout_marginBottom="16dp"
-                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
-                >
+                app:boxBackgroundColor="@color/black"
+                style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:textColor="@color/white_tinted"
-                    android:maxLines="1"/>
+                    android:singleLine="true"
+                    android:scrollHorizontally="true"/>
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -70,7 +71,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Choose a file"
-                    android:layout_weight="2"
+                    android:layout_weight="2.5"
                     android:layout_marginEnd="8dp"
                     android:layout_gravity="center_vertical"/>
 
@@ -81,24 +82,26 @@
                     android:hint="Filename"
                     android:layout_weight="2"
                     tools:layout_editor_absoluteY="16dp"
-                    android:enabled="false"
+                    app:boxBackgroundColor="@color/black"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.FilledBox"
                     >
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:enabled="false"
                         android:maxLines="1"/>
 
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/linearLayoutChooseCover"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginBottom="16dp">
                 <androidx.cardview.widget.CardView
+                    android:id="@+id/cardViewCover"
                     android:layout_width="96dp"
                     android:layout_height="96dp"
                     app:cardBackgroundColor="#1a1a1a"
@@ -170,5 +173,5 @@
                 android:text="Upload"
                 android:layout_alignParentBottom="true"/>
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
