@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -24,12 +25,18 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.StorageTask;
 import com.squareup.picasso.Picasso;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class SampleUploadActivity extends AppCompatActivity {
@@ -42,6 +49,10 @@ public class SampleUploadActivity extends AppCompatActivity {
     private ImageView imageViewCoverIcon;
     private Button buttonChooseFile;
     private Button buttonUpload;
+    private ProgressBar progressBar;
+
+    private Uri songFile;
+    private Uri albumCoverFile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +69,7 @@ public class SampleUploadActivity extends AppCompatActivity {
         imageViewCoverIcon = findViewById(R.id.imageViewCoverIcon);
         buttonChooseFile = findViewById(R.id.buttonChooseFile);
         buttonUpload = findViewById(R.id.buttonUpload);
+        progressBar = findViewById(R.id.progressBar);
 
 
         ActivityResultLauncher<Intent> chooseFileActivityResultLauncher = registerForActivityResult(
@@ -97,8 +109,17 @@ public class SampleUploadActivity extends AppCompatActivity {
                                 imageViewCover.setVisibility(View.VISIBLE);
                                 imageViewCoverIcon.setVisibility(View.GONE);
 //                                imageViewCover.setImageBitmap(bitmap);
+
+//                                Bitmap newImage = ((BitmapDrawable) imageViewCover.getDrawable()).getBitmap();
+//                                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+//                                newImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+//                                String path = MediaStore.Images.Media.insertImage(getContentResolver(), newImage, "AlbumCover", null);
+//                                albumCoverFile = Uri.parse(path);
                             } catch (Exception e) {
                                 e.printStackTrace();
+                                Toast.makeText(SampleUploadActivity.this, "Error with setting the cover", Toast.LENGTH_LONG).show();
+                                imageViewCover.setVisibility(View.GONE);
+                                imageViewCoverIcon.setVisibility(View.VISIBLE);
                             }
                         }
                     }
@@ -110,6 +131,13 @@ public class SampleUploadActivity extends AppCompatActivity {
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.setType("image/*");
                 chooseCoverActivityResultLauncher.launch(intent);
+            }
+        });
+
+        buttonUpload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                uploadFileStart();
             }
         });
     }
@@ -131,7 +159,7 @@ public class SampleUploadActivity extends AppCompatActivity {
         return super.dispatchTouchEvent( event );
     }
 
-    public String getFileName(Uri uri) {
+    private String getFileName(Uri uri) {
         String result = null;
         if (uri.getScheme().equals("content")) {
             Cursor cursor = getContentResolver().query(uri, null, null, null, null);
@@ -153,5 +181,13 @@ public class SampleUploadActivity extends AppCompatActivity {
             }
         }
         return result;
+    }
+
+    private void uploadFile(){
+        progressBar.setVisibility(View.VISIBLE);
+    }
+
+    private void uploadFileStart(){
+
     }
 }
