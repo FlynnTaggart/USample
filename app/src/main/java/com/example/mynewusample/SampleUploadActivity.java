@@ -4,8 +4,10 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 
 import android.app.Activity;
 import android.content.Context;
@@ -13,11 +15,15 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.graphics.drawable.Animatable;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -28,15 +34,22 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.blankj.utilcode.util.FileUtils;
+import com.blankj.utilcode.util.ImageUtils;
+import com.blankj.utilcode.util.UriUtils;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.StorageTask;
+import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
+import com.yalantis.ucrop.UCrop;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 
 public class SampleUploadActivity extends AppCompatActivity {
@@ -53,6 +66,7 @@ public class SampleUploadActivity extends AppCompatActivity {
 
     private Uri songFile;
     private Uri albumCoverFile;
+    private Bitmap albumCoverBitmap;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,24 +117,25 @@ public class SampleUploadActivity extends AppCompatActivity {
                         if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                             Intent data = result.getData();
                             Uri imageUri = data.getData();
-                            try {
-                                Picasso.get().load(imageUri).resize(256, 256).centerCrop().into(imageViewCover);
-//                                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), imageUri);
-                                imageViewCover.setVisibility(View.VISIBLE);
-                                imageViewCoverIcon.setVisibility(View.GONE);
-//                                imageViewCover.setImageBitmap(bitmap);
+                            albumCoverFile = imageUri;
 
-//                                Bitmap newImage = ((BitmapDrawable) imageViewCover.getDrawable()).getBitmap();
-//                                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-//                                newImage.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-//                                String path = MediaStore.Images.Media.insertImage(getContentResolver(), newImage, "AlbumCover", null);
-//                                albumCoverFile = Uri.parse(path);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                Toast.makeText(SampleUploadActivity.this, "Error with setting the cover", Toast.LENGTH_LONG).show();
-                                imageViewCover.setVisibility(View.GONE);
-                                imageViewCoverIcon.setVisibility(View.VISIBLE);
+                            File cover = new File(getCacheDir(), "Cropped.jpg");
+                            if (cover.exists()){
+                                cover.delete();
                             }
+                            Uri uri = Uri.fromFile(cover);
+                            UCrop.Options options = new UCrop.Options();
+                            options.setToolbarColor(ContextCompat.getColor(SampleUploadActivity.this, R.color.black));
+                            options.setActiveControlsWidgetColor(ContextCompat.getColor(SampleUploadActivity.this, R.color.orange_500));
+                            options.setStatusBarColor(ContextCompat.getColor(SampleUploadActivity.this, R.color.black));
+                            options.setDimmedLayerColor(ContextCompat.getColor(SampleUploadActivity.this, R.color.black));
+                            options.setToolbarWidgetColor(ContextCompat.getColor(SampleUploadActivity.this, R.color.white));
+                            options.setLogoColor(ContextCompat.getColor(SampleUploadActivity.this, R.color.black));
+                            UCrop.of(imageUri, uri)
+                                    .withAspectRatio(1, 1)
+                                    .withMaxResultSize(256, 256)
+                                    .withOptions(options)
+                                    .start(SampleUploadActivity.this);
                         }
                     }
                 });
@@ -133,6 +148,8 @@ public class SampleUploadActivity extends AppCompatActivity {
                 chooseCoverActivityResultLauncher.launch(intent);
             }
         });
+
+
 
         buttonUpload.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -189,5 +206,43 @@ public class SampleUploadActivity extends AppCompatActivity {
 
     private void uploadFileStart(){
 
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK && requestCode == UCrop.REQUEST_CROP) {
+            final Uri imageUri = UCrop.getOutput(data);
+            albumCoverFile = imageUri;
+            Target target = new Target() {
+                @Override
+                public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+                    albumCoverBitmap = bitmap;
+                    imageViewCover.setImageBitmap(albumCoverBitmap);
+                }
+
+                @Override
+                public void onBitmapFailed(Exception e, Drawable errorDrawable) {
+
+                }
+
+                @Override
+                public void onPrepareLoad(Drawable placeHolderDrawable) {
+                    imageViewCover.setImageDrawable(placeHolderDrawable);
+                }
+            };
+            try {
+                Picasso.get().load(imageUri).resize(256, 256).centerCrop().memoryPolicy(MemoryPolicy.NO_CACHE).into(target);
+                imageViewCover.setVisibility(View.VISIBLE);
+                imageViewCoverIcon.setVisibility(View.GONE);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(SampleUploadActivity.this, "Error with setting the cover", Toast.LENGTH_LONG).show();
+                imageViewCover.setVisibility(View.GONE);
+                imageViewCoverIcon.setVisibility(View.VISIBLE);
+            }
+        } else if (resultCode == UCrop.RESULT_ERROR) {
+            final Throwable cropError = UCrop.getError(data);
+        }
     }
 }
