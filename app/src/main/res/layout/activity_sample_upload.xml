@@ -80,7 +80,7 @@
                     android:id="@+id/textFieldFileName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Filename"
+                    android:hint="File name"
                     android:layout_weight="2"
                     tools:layout_editor_absoluteY="16dp"
                     app:boxBackgroundColor="@color/black"

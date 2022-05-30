@@ -4,7 +4,6 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.core.content.ContextCompat;
@@ -15,42 +14,27 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
-import android.graphics.drawable.Animatable;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.provider.OpenableColumns;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.blankj.utilcode.util.FileUtils;
-import com.blankj.utilcode.util.ImageUtils;
-import com.blankj.utilcode.util.UriUtils;
 import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.StorageTask;
 import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Target;
 import com.yalantis.ucrop.UCrop;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.IOException;
 
 public class SampleUploadActivity extends AppCompatActivity {
 
@@ -64,9 +48,9 @@ public class SampleUploadActivity extends AppCompatActivity {
     private Button buttonUpload;
     private ProgressBar progressBar;
 
-    private Uri songFile;
-    private Uri albumCoverFile;
-    private Bitmap albumCoverBitmap;
+    private Uri sampleFile;
+    private Uri sampleCoverFile;
+    private Bitmap sampleCoverBitmap;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +69,7 @@ public class SampleUploadActivity extends AppCompatActivity {
         buttonUpload = findViewById(R.id.buttonUpload);
         progressBar = findViewById(R.id.progressBar);
 
+        sampleFile = null;
 
         ActivityResultLauncher<Intent> chooseFileActivityResultLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -96,6 +81,7 @@ public class SampleUploadActivity extends AppCompatActivity {
                             Uri audioUri = data.getData();
                             String fileName = getFileName(audioUri);
                             textInputFileName.getEditText().setText(fileName);
+                            sampleFile = audioUri;
                         }
                     }
                 });
@@ -117,7 +103,7 @@ public class SampleUploadActivity extends AppCompatActivity {
                         if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                             Intent data = result.getData();
                             Uri imageUri = data.getData();
-                            albumCoverFile = imageUri;
+                            sampleCoverFile = imageUri;
 
                             File cover = new File(getCacheDir(), "Cropped.jpg");
                             if (cover.exists()){
@@ -205,7 +191,18 @@ public class SampleUploadActivity extends AppCompatActivity {
     }
 
     private void uploadFileStart(){
-
+        if(sampleFile == null){
+            Toast.makeText(this, "Please select a sample", Toast.LENGTH_SHORT).show();
+        }
+        else if(textInputFileName.getEditText().getText().toString().equals("")){
+            Toast.makeText(this, "Please select a sample", Toast.LENGTH_SHORT).show();
+        }
+//        else if(mUploadTask != null && mUploadTask.isInProgress()){
+//            Toast.makeText(this, "Sample is being uploaded!", Toast.LENGTH_SHORT).show();
+//        }
+        else{
+            uploadFile();
+        }
     }
 
     @Override
@@ -213,12 +210,12 @@ public class SampleUploadActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK && requestCode == UCrop.REQUEST_CROP) {
             final Uri imageUri = UCrop.getOutput(data);
-            albumCoverFile = imageUri;
+            sampleCoverFile = imageUri;
             Target target = new Target() {
                 @Override
                 public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
-                    albumCoverBitmap = bitmap;
-                    imageViewCover.setImageBitmap(albumCoverBitmap);
+                    sampleCoverBitmap = bitmap;
+                    imageViewCover.setImageBitmap(sampleCoverBitmap);
                 }
 
                 @Override
