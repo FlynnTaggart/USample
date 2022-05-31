@@ -1,6 +1,7 @@
 package com.example.mynewusample;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -14,12 +15,20 @@ import android.view.View;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 
 public class MainActivity extends AppCompatActivity {
 
-    AlertDialog dialog;
+    private AlertDialog logOutDialog;
+
+    private FirebaseFirestore mStore;
+    private FirebaseAuth mAuth;
+    private String userID;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,6 +36,26 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         MaterialToolbar toolbar = (MaterialToolbar) findViewById(R.id.topAppBar);;
         setSupportActionBar(toolbar);
+
+        mAuth = FirebaseAuth.getInstance();
+        mStore = FirebaseFirestore.getInstance();
+        userID = mAuth.getCurrentUser().getUid();
+
+        if(mAuth.getCurrentUser() != null) {
+            DocumentReference documentRef = mStore.collection("users").document(userID);
+            documentRef.addSnapshotListener(this, new EventListener<DocumentSnapshot>() {
+                @Override
+                public void onEvent(@Nullable DocumentSnapshot value, @Nullable FirebaseFirestoreException error) {
+                    try {
+                        toolbar.setTitle(value.getString("nickname") + "'s samples");
+                    }
+                    catch (NullPointerException e){
+
+                    }
+                }
+            });
+        }
+
         FloatingActionButton fab = findViewById(R.id.floating_action_button);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -52,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         });
         builder.setCancelable(true);
         builder.setTitle("Do you really want to sign out?").setMessage("");
-        dialog = builder.create();
+        logOutDialog = builder.create();
     }
 
     @Override
@@ -67,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
         switch (item.getItemId()) {
             case R.id.actionLogout:
 
-                dialog.show();
+                logOutDialog.show();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);

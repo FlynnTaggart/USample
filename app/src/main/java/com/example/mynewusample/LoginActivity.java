@@ -1,9 +1,11 @@
 package com.example.mynewusample;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
@@ -26,6 +28,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
@@ -40,6 +43,8 @@ public class LoginActivity extends AppCompatActivity {
     private ProgressBar progressBar;
 
     private FirebaseAuth mAuth;
+
+    private AlertDialog networkErrorDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,6 +113,9 @@ public class LoginActivity extends AppCompatActivity {
                                 textFieldEmail.setErrorEnabled(true);
                                 textFieldEmail.setError("There is no user with such email.");
                             }
+                            catch (FirebaseNetworkException e){
+                                networkErrorDialog.show();
+                            }
                             catch (Exception e){
                                 Toast.makeText(LoginActivity.this, "Error: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                             }
@@ -144,6 +152,16 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable editable) { }
         });
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                dialog.cancel();
+            }
+        });
+        builder.setCancelable(true);
+        builder.setTitle("Network error").setMessage("There is a problem with your connection. Check your network settings.");
+        networkErrorDialog = builder.create();
     }
 
     @Override

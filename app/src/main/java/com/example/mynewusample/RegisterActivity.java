@@ -1,9 +1,11 @@
 package com.example.mynewusample;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
@@ -27,6 +29,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.android.material.textview.MaterialTextView;
+import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
@@ -50,6 +53,7 @@ public class RegisterActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private FirebaseFirestore mStore;
     private String userID;
+    private AlertDialog networkErrorDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -138,6 +142,9 @@ public class RegisterActivity extends AppCompatActivity {
                                 textFieldEmail.setErrorEnabled(true);
                                 textFieldEmail.setError("Email is already registered.");
                             }
+                            catch (FirebaseNetworkException e){
+                                networkErrorDialog.show();
+                            }
                             catch (Exception e){
                                 Toast.makeText(RegisterActivity.this, "Error: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                             }
@@ -185,6 +192,16 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable editable) { }
         });
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                dialog.cancel();
+            }
+        });
+        builder.setCancelable(true);
+        builder.setTitle("Network error").setMessage("There is a problem with your connection. Check your network settings.");
+        networkErrorDialog = builder.create();
     }
 
     @Override
