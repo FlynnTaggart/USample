@@ -2,6 +2,7 @@ package com.example.mynewusample;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.app.ActivityOptions;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -24,6 +25,7 @@ public class AuthMainActivity extends AppCompatActivity {
 
         if(FirebaseAuth.getInstance().getCurrentUser() != null){
             Intent intent = new Intent(AuthMainActivity.this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);
             finish();
         }
@@ -33,6 +35,7 @@ public class AuthMainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent(AuthMainActivity.this, RegisterActivity.class);
                 startActivity(intent);
+                overridePendingTransition(R.transition.slide_in_right, R.transition.slide_out_left);
             }
         });
 
@@ -41,6 +44,7 @@ public class AuthMainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent(AuthMainActivity.this, LoginActivity.class);
                 startActivity(intent);
+                overridePendingTransition(R.transition.slide_in_right, R.transition.slide_out_left);
             }
         });
     }

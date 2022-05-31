@@ -46,7 +46,8 @@
             app:counterEnabled="true"
             app:counterMaxLength="30"
             app:boxBackgroundColor="@color/black"
-            app:endIconMode="clear_text">
+            app:endIconMode="clear_text"
+            app:errorEnabled="true">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:layout_width="match_parent"
