@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">USample</string>
+    <string name="snackbar_action_name">Verify</string>
 </resources>

@@ -15,6 +15,8 @@
         <item name="android:textColor">@color/white_tinted</item>
         <item name="titleTextColor">@color/white_tinted</item>
         <item name="popupTheme">@style/OptionsMenu</item>
+        <item name="snackbarStyle">@style/Widget.App.Snackbar</item>
+        <item name="snackbarButtonStyle">@style/Widget.App.SnackbarButton</item>
     </style>
 
     <style name="ToolbarTheme" parent="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
@@ -24,5 +26,21 @@
 
     <style name="OptionsMenu" parent="ThemeOverlay.AppCompat.Dark">
         <item name="android:background">#00000000</item>
+    </style>
+
+    <style name="Widget.App.Snackbar" parent="Widget.MaterialComponents.Snackbar">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.App.Snackbar</item>
+        <item name="colorPrimary">@color/white_tinted</item>
+        <item name="actionTextColorAlpha">1</item>
+    </style>
+
+    <style name="Widget.App.SnackbarButton" parent="Widget.MaterialComponents.Button.TextButton.Snackbar">
+        <item name="android:textColor">@color/orange_500</item>
+    </style>
+
+    <style name="ThemeOverlay.App.Snackbar" parent="">
+        <item name="colorPrimary">@color/orange_500</item>
+        <item name="android:textColor">@color/white_tinted</item>
+        <item name="colorOnSurface">@color/cardview_dark_background</item>
     </style>
 </resources>

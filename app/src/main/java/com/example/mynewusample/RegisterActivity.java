@@ -116,6 +116,27 @@ public class RegisterActivity extends AppCompatActivity {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if(task.isSuccessful()) {
+
+                            FirebaseUser curUser = mAuth.getCurrentUser();
+                            curUser.sendEmailVerification().addOnSuccessListener(new OnSuccessListener<Void>() {
+                                @Override
+                                public void onSuccess(Void unused) {
+                                    Toast.makeText(RegisterActivity.this, "Email verification link has been sent to you.", Toast.LENGTH_LONG).show();
+                                }
+                            }).addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(@NonNull Exception e) {
+                                    try{
+                                        throw e;
+                                    }
+                                    catch (FirebaseNetworkException ex){
+                                        networkErrorDialog.show();
+                                    }
+                                    catch (Exception ex){
+                                        Toast.makeText(RegisterActivity.this, "There is an error with sending the email verification.", Toast.LENGTH_LONG).show();                                    }
+                                }
+                            });
+
                             userID = mAuth.getCurrentUser().getUid();
                             DocumentReference documentRef = mStore.collection("users").document(userID);
 
@@ -128,6 +149,7 @@ public class RegisterActivity extends AppCompatActivity {
                                 public void onSuccess(Void unused) {
                                     Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                                    intent.putExtra("FromRegistration", true);
                                     startActivity(intent);
                                     finish();
                                 }
