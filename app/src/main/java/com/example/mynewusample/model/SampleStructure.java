@@ -1,7 +1,9 @@
 package com.example.mynewusample.model;
 
+import android.text.TextUtils;
+
 public class SampleStructure {
-    private String sampleName, sampleLink, fileName, sampleCoverLink, note;
+    private String sampleName, sampleLink, fileName, sampleCoverLink, note, sampleID;
 
     public SampleStructure() {
     }
@@ -11,6 +13,9 @@ public class SampleStructure {
         this.sampleLink = sampleLink;
         this.fileName = fileName;
         this.sampleCoverLink = sampleCoverLink;
+        if(TextUtils.isEmpty(this.sampleCoverLink)){
+            this.sampleCoverLink = "NONE";
+        }
         this.note = note;
     }
 
