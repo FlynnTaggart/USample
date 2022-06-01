@@ -90,16 +90,19 @@ public class LoginActivity extends AppCompatActivity {
                 String password = textFieldPassword.getEditText().getText().toString();
 
                 if(TextUtils.isEmpty(email)){
+                    canLoad = true;
                     textFieldEmail.setErrorEnabled(true);
                     textFieldEmail.setError("Email is required.");
                     return;
                 }
                 if(TextUtils.isEmpty(password)){
+                    canLoad = true;
                     textFieldPassword.setErrorEnabled(true);
                     textFieldPassword.setError("Password is required.");
                     return;
                 }
                 if(password.length() < 8){
+                    canLoad = true;
                     textFieldPassword.setErrorEnabled(true);
                     textFieldPassword.setError("Min. 8 characters required.");
                     return;

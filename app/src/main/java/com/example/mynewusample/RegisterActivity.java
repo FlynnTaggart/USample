@@ -85,26 +85,31 @@ public class RegisterActivity extends AppCompatActivity {
                 String nickname = textFieldNickname.getEditText().getText().toString().trim();
 
                 if(TextUtils.isEmpty(email)){
+                    canLoad = true;
                     textFieldEmail.setErrorEnabled(true);
                     textFieldEmail.setError("Email is required.");
                     return;
                 }
                 if(TextUtils.isEmpty(password)){
+                    canLoad = true;
                     textFieldPassword.setErrorEnabled(true);
                     textFieldPassword.setError("Password is required.");
                     return;
                 }
                 if(password.length() < 8){
+                    canLoad = true;
                     textFieldPassword.setErrorEnabled(true);
                     textFieldPassword.setError("Min. 8 characters required.");
                     return;
                 }
                 if(TextUtils.isEmpty(nickname)){
+                    canLoad = true;
                     textFieldNickname.setErrorEnabled(true);
                     textFieldNickname.setError("Nickname is required.");
                     return;
                 }
                 if(nickname.length() < 3){
+                    canLoad = true;
                     textFieldNickname.setErrorEnabled(true);
                     textFieldNickname.setError("Min. 3 characters required.");
                     return;

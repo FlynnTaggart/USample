@@ -133,24 +133,17 @@ public class MainActivity extends AppCompatActivity {
                 user = mAuth.getCurrentUser();
                 emailVerified = user.isEmailVerified();
                 if(!getIntent().hasExtra("FromRegistration") && !emailVerified){
-                    Snackbar snackbar = Snackbar.make(getWindow().getDecorView(), "You need to verify your email.", Snackbar.LENGTH_LONG);
+                    Snackbar snackbar = Snackbar.make(MainActivity.this.findViewById(R.id.snackbarLayout), "You need to verify your email.", Snackbar.LENGTH_LONG);
                     snackbar.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.white_tinted));
-                    View view = snackbar.getView();
-                    FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) view.getLayoutParams();
 
+                    View view = snackbar.getView();
+                    CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) view.getLayoutParams();
                     Rect rectangle = new Rect();
                     Window window = getWindow();
                     window.getDecorView().getWindowVisibleDisplayFrame(rectangle);
-                    int statusBarHeight = rectangle.top;
                     params.gravity = Gravity.TOP;
-                    int px = (int) TypedValue.applyDimension(
-                            TypedValue.COMPLEX_UNIT_DIP,
-                            56,
-                            getResources().getDisplayMetrics()
-                    );
-                    params.topMargin = px + statusBarHeight;
-
                     view.setLayoutParams(params);
+
                     snackbar.setAction(R.string.snackbar_action_name, new View.OnClickListener() {
                         @Override
                         public void onClick(View view) {

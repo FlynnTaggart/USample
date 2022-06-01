@@ -60,6 +60,7 @@ public class ResetPasswordActivity extends AppCompatActivity {
                 canLoad = false;
                 String email = textFieldEmail.getEditText().getText().toString().trim();
                 if (TextUtils.isEmpty(email)) {
+                    canLoad = true;
                     textFieldEmail.setErrorEnabled(true);
                     textFieldEmail.setError("Email is required.");
                     return;
