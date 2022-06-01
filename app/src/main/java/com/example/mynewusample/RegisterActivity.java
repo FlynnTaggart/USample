@@ -55,6 +55,8 @@ public class RegisterActivity extends AppCompatActivity {
     private String userID;
     private AlertDialog networkErrorDialog;
 
+    private boolean canLoad = true;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -75,6 +77,9 @@ public class RegisterActivity extends AppCompatActivity {
         buttonCommit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(!canLoad)
+                    return;
+                canLoad = false;
                 String email = textFieldEmail.getEditText().getText().toString().trim();
                 String password = textFieldPassword.getEditText().getText().toString();
                 String nickname = textFieldNickname.getEditText().getText().toString().trim();
@@ -150,6 +155,7 @@ public class RegisterActivity extends AppCompatActivity {
                             }
                             finally {
                                 progressBar.setVisibility(View.GONE);
+                                canLoad = true;
                             }
                         }
                     }

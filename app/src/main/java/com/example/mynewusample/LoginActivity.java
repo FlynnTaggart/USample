@@ -51,6 +51,8 @@ public class LoginActivity extends AppCompatActivity {
 
     private AlertDialog networkErrorDialog;
 
+    private boolean canLoad = true;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -81,6 +83,9 @@ public class LoginActivity extends AppCompatActivity {
         buttonCommit.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(!canLoad)
+                    return;
+                canLoad = false;
                 String email = textFieldEmail.getEditText().getText().toString().trim();
                 String password = textFieldPassword.getEditText().getText().toString();
 
@@ -136,6 +141,7 @@ public class LoginActivity extends AppCompatActivity {
                             }
                             finally {
                                 progressBar.setVisibility(View.GONE);
+                                canLoad = true;
                             }
                         }
                     }

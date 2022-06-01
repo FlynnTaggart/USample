@@ -37,6 +37,9 @@ public class ResetPasswordActivity extends AppCompatActivity {
 
     private AlertDialog networkErrorDialog;
 
+
+    private boolean canLoad = true;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,6 +55,9 @@ public class ResetPasswordActivity extends AppCompatActivity {
         buttonSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(!canLoad)
+                    return;
+                canLoad = false;
                 String email = textFieldEmail.getEditText().getText().toString().trim();
                 if (TextUtils.isEmpty(email)) {
                     textFieldEmail.setErrorEnabled(true);
@@ -63,6 +69,7 @@ public class ResetPasswordActivity extends AppCompatActivity {
                     @Override
                     public void onSuccess(Void unused) {
                         Toast.makeText(ResetPasswordActivity.this, "Password reset link has been sent to your email.", Toast.LENGTH_LONG).show();
+                        canLoad = true;
                         onBackPressed();
                     }
                 }).addOnFailureListener(new OnFailureListener() {
@@ -89,6 +96,7 @@ public class ResetPasswordActivity extends AppCompatActivity {
                         }
                         finally {
                             progressBar.setVisibility(View.GONE);
+                            canLoad = true;
                         }
                     }
                 });
