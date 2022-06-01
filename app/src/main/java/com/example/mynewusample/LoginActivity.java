@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.transition.Slide;
@@ -22,9 +23,12 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.textfield.TextInputLayout;
@@ -41,6 +45,7 @@ public class LoginActivity extends AppCompatActivity {
     private TextInputLayout textFieldPassword;
     private Button buttonCommit;
     private ProgressBar progressBar;
+    private TextView textViewForgotPassword;
 
     private FirebaseAuth mAuth;
 
@@ -60,8 +65,18 @@ public class LoginActivity extends AppCompatActivity {
         textFieldPassword = findViewById(R.id.textFieldPassword);
         buttonCommit = findViewById(R.id.buttonCommit);
         progressBar = findViewById(R.id.progressBar);
+        textViewForgotPassword = findViewById(R.id.textViewForgotPassword);
 
         mAuth = FirebaseAuth.getInstance();
+
+        textViewForgotPassword.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(LoginActivity.this, ResetPasswordActivity.class);
+                startActivity(intent);
+                overridePendingTransition(R.transition.slide_in_right, R.transition.slide_out_left);
+            }
+        });
 
         buttonCommit.setOnClickListener(new View.OnClickListener() {
             @Override

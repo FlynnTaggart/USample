@@ -9,9 +9,12 @@
         <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/drawable/ic_round_file_upload_24.xml" value="0.2985" />
         <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/drawable/image_upload_border.xml" value="0.1805" />
         <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/layout/activity_auth_main.xml" value="0.19166666666666668" />
+        <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/layout/activity_login.xml" value="0.43141852286049237" />
         <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/layout/activity_main.xml" value="0.16" />
         <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/layout/activity_register.xml" value="0.19166666666666668" />
+        <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/layout/activity_reset_password.xml" value="0.33" />
         <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/layout/activity_sample_upload.xml" value="0.14874884151992585" />
+        <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/layout/password_reset_dialog.xml" value="0.75" />
         <entry key="..\:/Users/mr130/AndroidStudioProjects/MyNewUSample/app/src/main/res/menu/top_app_bar_main.xml" value="0.33" />
       </map>
     </option>
