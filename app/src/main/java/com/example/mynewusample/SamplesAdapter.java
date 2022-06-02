@@ -14,7 +14,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mynewusample.model.SampleStructure;
 import com.squareup.picasso.Picasso;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
 
@@ -32,9 +31,7 @@ public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesV
     @NonNull
     @Override
     public SamplesAdapter.SamplesViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-
         View view = LayoutInflater.from(mContext).inflate(R.layout.item_sample, parent, false);
-
         return new SamplesViewHolder(view);
     }
 
@@ -66,6 +63,20 @@ public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesV
     @Override
     public int getItemCount() {
         return samplesList.size();
+    }
+
+    public void removeItem(int position) {
+        samplesList.remove(position);
+        notifyItemRemoved(position);
+    }
+
+    public void restoreItem(SampleStructure item, int position) {
+        samplesList.add(position, item);
+        notifyItemInserted(position);
+    }
+
+    public List<SampleStructure> getData() {
+        return samplesList;
     }
 
     private static String makeSampleShortName(String sampleName){

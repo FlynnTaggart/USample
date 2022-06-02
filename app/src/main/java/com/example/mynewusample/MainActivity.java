@@ -6,15 +6,13 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
-import androidx.core.widget.NestedScrollView;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.Resources;
-import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
@@ -23,8 +21,6 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
-import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -78,7 +74,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        MaterialToolbar toolbar = (MaterialToolbar) findViewById(R.id.topAppBar);;
+        MaterialToolbar toolbar = (MaterialToolbar) findViewById(R.id.topAppBar);
+
         setSupportActionBar(toolbar);
 
         mAuth = FirebaseAuth.getInstance();
@@ -87,15 +84,14 @@ public class MainActivity extends AppCompatActivity {
         userID = user.getUid();
         mStorageRef = FirebaseStorage.getInstance().getReference();
 
-        if(mAuth.getCurrentUser() != null) {
+        if (mAuth.getCurrentUser() != null) {
             DocumentReference documentRef = mStore.collection("users").document(userID);
             documentRef.addSnapshotListener(this, new EventListener<DocumentSnapshot>() {
                 @Override
                 public void onEvent(@Nullable DocumentSnapshot value, @Nullable FirebaseFirestoreException error) {
                     try {
                         toolbar.setTitle(value.getString("nickname") + "'s samples");
-                    }
-                    catch (NullPointerException e){
+                    } catch (NullPointerException e) {
 
                     }
                 }
@@ -141,6 +137,92 @@ public class MainActivity extends AppCompatActivity {
 
         newSampleListener();
 
+        SwipeToDeleteCallback swipeToDeleteCallback = new SwipeToDeleteCallback(this) {
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int i) {
+                final int position = viewHolder.getAdapterPosition();
+                final SampleStructure item = samplesAdapter.getData().get(position);
+
+                samplesAdapter.removeItem(position);
+
+                Snackbar snackbar = Snackbar
+                        .make(findViewById(R.id.mainContent), "Sample was removed.", Snackbar.LENGTH_LONG);
+                snackbar.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.white_tinted));
+
+                snackbar.setAction("Undo", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        samplesAdapter.restoreItem(item, position);
+                        recyclerViewSamples.scrollToPosition(position);
+                    }
+                });
+
+                snackbar.setAnchorView(fab);
+
+                snackbar.addCallback(new Snackbar.Callback() {
+                    @Override
+                    public void onDismissed(Snackbar snackbar, int event) {
+                        DocumentReference documentRef = mStore.collection("users").document(userID)
+                                .collection("samples").document(item.getSampleName());
+                        documentRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void unused) {
+                                final StorageReference sampleRef = mStorageRef.child("users/" + userID + "/samples/" + item.getFileName());
+                                if(!item.getSampleCoverLink().equals("NONE")) {
+                                    final StorageReference coverRef = mStorageRef.child("users/" + userID + "/covers/" + item.getFileName() + ".jpg");
+                                    coverRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        @Override
+                                        public void onSuccess(Void unused) {
+                                            sampleRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                                                @Override
+                                                public void onSuccess(Void unused) {
+
+                                                }
+                                            }).addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception e) {
+                                                    onSampleDeleteError(e);
+                                                }
+                                            });
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            onSampleDeleteError(e);
+                                        }
+                                    });
+                                } else {
+                                    sampleRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        @Override
+                                        public void onSuccess(Void unused) {
+
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            onSampleDeleteError(e);
+                                        }
+                                    });
+                                }
+                            }
+                        }).addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                onSampleDeleteError(e);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onShown(Snackbar snackbar) { }
+                });
+                snackbar.show();
+            }
+        };
+
+        ItemTouchHelper itemTouchhelper = new ItemTouchHelper(swipeToDeleteCallback);
+        itemTouchhelper.attachToRecyclerView(recyclerViewSamples);
+
         AlertDialog.Builder networkErrorBuilder = new AlertDialog.Builder(this);
         networkErrorBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
@@ -170,8 +252,21 @@ public class MainActivity extends AppCompatActivity {
         logOutDialog = LogOutBuilder.create();
     }
 
+    public void onSampleDeleteError(Exception e) {
+        try {
+            throw e;
+        } catch (FirebaseNetworkException ex) {
+            networkErrorDialog.show();
+        } catch (FirebaseTooManyRequestsException ex) {
+            Toast.makeText(MainActivity.this, "Too many requests.", Toast.LENGTH_LONG).show();
+        } catch (Exception ex) {
+            Toast.makeText(MainActivity.this, "There is an error with deleting the sample."
+                    + ex.getMessage() + ex.getClass().toString(), Toast.LENGTH_LONG).show();
+        }
+    }
+
     private void newSampleListener() {
-        if(mAuth.getCurrentUser() != null) {
+        if (mAuth.getCurrentUser() != null) {
             mStore.collection("users").document(userID)
                 .collection("samples").orderBy("sampleName", Query.Direction.ASCENDING)
                 .addSnapshotListener(new EventListener<QuerySnapshot>() {
@@ -181,23 +276,32 @@ public class MainActivity extends AppCompatActivity {
                             swipeRefreshLayout.setRefreshing(false);
                             Log.e("SampleList", "Error: " + error.getMessage() + " " + error.getClass().toString());
                         }
-                        boolean dataChanged = false;
-                        for (DocumentChange documentChange : value.getDocumentChanges()) {
-                            if (documentChange.getType() == DocumentChange.Type.ADDED) {
-                                if (!sampleIsAdded(documentChange.getDocument().toObject(SampleStructure.class))) {
-                                    samples.add(documentChange.getDocument().toObject(SampleStructure.class));
-                                    dataChanged = true;
+                        if(mAuth.getCurrentUser() != null) {
+                            mStore.clearPersistence();
+                            boolean dataChanged = false;
+                            for (DocumentChange documentChange : value.getDocumentChanges()) {
+                                if (documentChange.getType() == DocumentChange.Type.ADDED) {
+                                    if (!sampleIsAdded(documentChange.getDocument().toObject(SampleStructure.class))) {
+                                        samples.add(documentChange.getDocument().toObject(SampleStructure.class));
+                                        dataChanged = true;
+                                    }
+                                }
+                                if (documentChange.getType() == DocumentChange.Type.REMOVED) {
+                                    if (sampleIsAdded(documentChange.getDocument().toObject(SampleStructure.class))) {
+                                        samples.remove(findSampleInListByName(documentChange.getDocument().toObject(SampleStructure.class).getSampleName()));
+                                        dataChanged = true;
+                                    }
                                 }
                             }
-                        }
-                        if (dataChanged) {
-                            samples.sort(new Comparator<SampleStructure>() {
-                                @Override
-                                public int compare(SampleStructure s1, SampleStructure s2) {
-                                    return s1.getSampleName().compareTo(s2.getSampleName());
-                                }
-                            });
-                            samplesAdapter.notifyDataSetChanged();
+                            if (dataChanged) {
+                                samples.sort(new Comparator<SampleStructure>() {
+                                    @Override
+                                    public int compare(SampleStructure s1, SampleStructure s2) {
+                                        return s1.getSampleName().compareTo(s2.getSampleName());
+                                    }
+                                });
+                                samplesAdapter.notifyDataSetChanged();
+                            }
                         }
                         swipeRefreshLayout.setRefreshing(false);
                     }
@@ -205,9 +309,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private int findSampleInListByName(String sampleName) {
+        for(int i = 0; i < samples.size(); i++){
+            if(samples.get(i).getSampleName().equals(sampleName)){
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private boolean sampleIsAdded(SampleStructure sample) {
-        for(SampleStructure i : samples){
-            if(i.getSampleName().equals(sample.getSampleName())){
+        for (SampleStructure i : samples) {
+            if (i.getSampleName().equals(sample.getSampleName())) {
                 return true;
             }
         }
@@ -223,7 +336,7 @@ public class MainActivity extends AppCompatActivity {
             public void onSuccess(Object o) {
                 user = mAuth.getCurrentUser();
                 emailVerified = user.isEmailVerified();
-                if(!getIntent().hasExtra("FromRegistration") && !emailVerified){
+                if (!getIntent().hasExtra("FromRegistration") && !emailVerified) {
                     Snackbar snackbar = Snackbar.make(MainActivity.this.findViewById(R.id.mainContent), "You need to verify your email.", Snackbar.LENGTH_LONG);
                     snackbar.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.white_tinted));
 
@@ -251,17 +364,17 @@ public class MainActivity extends AppCompatActivity {
                             }).addOnFailureListener(new OnFailureListener() {
                                 @Override
                                 public void onFailure(@NonNull Exception e) {
-                                    try{
+                                    try {
                                         throw e;
-                                    }
-                                    catch (FirebaseNetworkException ex){
+                                    } catch (FirebaseNetworkException ex) {
                                         networkErrorDialog.show();
-                                    }
-                                    catch (FirebaseTooManyRequestsException ex){
+                                    } catch (FirebaseTooManyRequestsException ex) {
                                         Toast.makeText(MainActivity.this, "Email verification link has already been sent to you.", Toast.LENGTH_LONG).show();
+                                    } catch (Exception ex) {
+                                        Toast.makeText(MainActivity.this,
+                                                "There is an error with sending the email verification."
+                                                        + ex.getMessage() + ex.getClass().toString(), Toast.LENGTH_LONG).show();
                                     }
-                                    catch (Exception ex){
-                                        Toast.makeText(MainActivity.this, "There is an error with sending the email verification." + ex.getMessage() + ex.getClass().toString(), Toast.LENGTH_LONG).show();                                    }
                                 }
                             });
                             snackbar.dismiss();
