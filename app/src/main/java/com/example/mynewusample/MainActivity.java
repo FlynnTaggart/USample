@@ -135,6 +135,26 @@ public class MainActivity extends AppCompatActivity {
         samplesAdapter = new SamplesAdapter(MainActivity.this, samples);
         recyclerViewSamples.setAdapter(samplesAdapter);
 
+        recyclerViewSamples.addOnItemTouchListener(new RecyclerItemClickListener(MainActivity.this,
+                recyclerViewSamples, new RecyclerItemClickListener.OnItemClickListener() {
+            @Override
+            public void onItemClick(View view, int position) {
+                Intent intent = new Intent(MainActivity.this, SampleListenActivity.class);
+                SampleStructure sample = samples.get(position);
+                intent.putExtra("sampleName", sample.getSampleName());
+                intent.putExtra("sampleLink", sample.getSampleLink());
+                intent.putExtra("fileName", sample.getFileName());
+                intent.putExtra("sampleCoverLink", sample.getSampleCoverLink());
+                intent.putExtra("note", sample.getNote());
+                startActivity(intent);
+            }
+
+            @Override
+            public void onLongItemClick(View view, int position) {
+
+            }
+        }));
+
         newSampleListener();
 
         SwipeToDeleteCallback swipeToDeleteCallback = new SwipeToDeleteCallback(this) {
@@ -162,13 +182,14 @@ public class MainActivity extends AppCompatActivity {
                 snackbar.addCallback(new Snackbar.Callback() {
                     @Override
                     public void onDismissed(Snackbar snackbar, int event) {
-                        DocumentReference documentRef = mStore.collection("users").document(userID)
-                                .collection("samples").document(item.getSampleName());
-                        documentRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                        if (event != Snackbar.Callback.DISMISS_EVENT_ACTION){
+                            DocumentReference documentRef = mStore.collection("users").document(userID)
+                                    .collection("samples").document(item.getSampleName());
+                            documentRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void unused) {
                                 final StorageReference sampleRef = mStorageRef.child("users/" + userID + "/samples/" + item.getFileName());
-                                if(!item.getSampleCoverLink().equals("NONE")) {
+                                if (!item.getSampleCoverLink().equals("NONE")) {
                                     final StorageReference coverRef = mStorageRef.child("users/" + userID + "/covers/" + item.getFileName() + ".jpg");
                                     coverRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
                                         @Override
@@ -205,14 +226,14 @@ public class MainActivity extends AppCompatActivity {
                                     });
                                 }
                             }
-                        }).addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception e) {
-                                onSampleDeleteError(e);
-                            }
-                        });
+                            }).addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(@NonNull Exception e) {
+                                    onSampleDeleteError(e);
+                                }
+                            });
+                        }
                     }
-
                     @Override
                     public void onShown(Snackbar snackbar) { }
                 });

@@ -1,6 +1,7 @@
 package com.example.mynewusample;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,6 +23,9 @@ public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesV
     Context mContext;
     List<SampleStructure> samplesList;
 
+    public interface OnItemClickListener {
+        public void onItemClick(View view, int position);
+    }
 
     public SamplesAdapter(Context mContext, List<SampleStructure> samplesList) {
         this.mContext = mContext;
@@ -108,6 +112,18 @@ public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesV
             textViewSampleShortName = itemView.findViewById(R.id.textViewSampleShortName);
             imageViewSampleCover = itemView.findViewById(R.id.imageViewSampleCover);
             imageViewPlayButton = itemView.findViewById(R.id.imageViewPlayButton);
+            Drawable pause = itemView.getContext().getDrawable(R.drawable.ic_round_pause_24);
+            Drawable play = itemView.getContext().getDrawable(R.drawable.ic_round_play_arrow_24);
+            imageViewPlayButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if(imageViewPlayButton.getDrawable().equals(pause)){
+                        imageViewPlayButton.setImageDrawable(play);
+                    } else {
+                        imageViewPlayButton.setImageDrawable(pause);
+                    }
+                }
+            });
         }
     }
 }

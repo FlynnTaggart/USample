@@ -13,6 +13,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyNewUSample">
         <activity
+            android:name=".SampleListenActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:screenOrientation="portrait"/>
+        <activity
             android:name=".ResetPasswordActivity"
             android:exported="false" />
         <activity
@@ -47,7 +52,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="false"
-            android:screenOrientation="portrait"></activity>
+            android:screenOrientation="portrait" />
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:screenOrientation="portrait"
