@@ -8,12 +8,14 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
 
 import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
@@ -24,9 +26,13 @@ import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -38,12 +44,15 @@ import com.example.mynewusample.model.SampleStructure;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.StorageTask;
@@ -261,12 +270,13 @@ public class SampleUploadActivity extends AppCompatActivity {
         } else if (textFieldName.getEditText().getText().toString().trim().length() > 30) {
             textFieldName.setErrorEnabled(true);
             textFieldName.setError("Sample name is too long.");
-        } else {
+        } else if (canLoad) {
             uploadFile();
         }
     }
 
     private void uploadFile() {
+        canLoad = false;
         progressBar.setVisibility(View.VISIBLE);
 
         String sampleName = simplifySampleName(textFieldName.getEditText().getText().toString().trim());
@@ -279,6 +289,7 @@ public class SampleUploadActivity extends AppCompatActivity {
             @Override
             public void onSuccess(DocumentSnapshot documentSnapshot) {
                 if (documentSnapshot.exists()) {
+                    canLoad = true;
                     textFieldName.setErrorEnabled(true);
                     textFieldName.setError("Sample with such name already exists.");
                     progressBar.setVisibility(View.GONE);
@@ -308,7 +319,15 @@ public class SampleUploadActivity extends AppCompatActivity {
                                                         documentRef.set(sample).addOnSuccessListener(new OnSuccessListener<Void>() {
                                                             @Override
                                                             public void onSuccess(Void unused) {
+                                                                showSampleUploadSuccessSnackbar();
+
+                                                                canLoad = true;
                                                                 progressBar.setVisibility(View.GONE);
+                                                            }
+                                                        }).addOnFailureListener(new OnFailureListener() {
+                                                            @Override
+                                                            public void onFailure(@NonNull Exception e) {
+                                                                onSampleUploadFailure(e);
                                                             }
                                                         });
                                                     }
@@ -317,7 +336,7 @@ public class SampleUploadActivity extends AppCompatActivity {
                                         }).addOnFailureListener(new OnFailureListener() {
                                             @Override
                                             public void onFailure(@NonNull Exception e) {
-
+                                                onSampleUploadFailure(e);
                                             }
                                         });
                                     } else {
@@ -327,23 +346,90 @@ public class SampleUploadActivity extends AppCompatActivity {
                                         documentRef.set(sample).addOnSuccessListener(new OnSuccessListener<Void>() {
                                             @Override
                                             public void onSuccess(Void unused) {
+                                                showSampleUploadSuccessSnackbar();
+
+                                                canLoad = true;
                                                 progressBar.setVisibility(View.GONE);
+                                            }
+                                        }).addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                onSampleUploadFailure(e);
                                             }
                                         });
                                     }
+                                }
+                            }).addOnFailureListener(new OnFailureListener() {
+                                @Override
+                                public void onFailure(@NonNull Exception e) {
+                                    onSampleUploadFailure(e);
                                 }
                             });
                         }
                     }).addOnFailureListener(new OnFailureListener() {
                         @Override
                         public void onFailure(@NonNull Exception e) {
-
+                            onSampleUploadFailure(e);
                         }
                     });
                 }
             }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                onSampleUploadFailure(e);
+            }
         });
 
+    }
+
+    private void showSampleUploadSuccessSnackbar() {
+        Snackbar snackbar = Snackbar.make(SampleUploadActivity.this.findViewById(R.id.mainContent),
+                "Sample has been successfully uploaded.", Snackbar.LENGTH_LONG);
+        snackbar.setTextColor(ContextCompat.getColor(SampleUploadActivity.this, R.color.white_tinted));
+
+        View view = snackbar.getView();
+        CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) view.getLayoutParams();
+        params.gravity = Gravity.TOP;
+        Rect rectangle = new Rect();
+        Window window = getWindow();
+        window.getDecorView().getWindowVisibleDisplayFrame(rectangle);
+        int statusBarHeight = rectangle.top;
+        Resources r = getResources();
+        int px = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                56,
+                r.getDisplayMetrics()
+        );
+        params.topMargin = px;
+        view.setLayoutParams(params);
+
+        snackbar.show();
+    }
+
+    public void onSampleUploadFailure(Exception e){
+        try{
+            throw e;
+        }
+        catch (FirebaseNetworkException ex){
+            networkErrorDialog.show();
+        }
+        catch (FirebaseFirestoreException ex){
+            if(ex.getCode() == FirebaseFirestoreException.Code.UNAVAILABLE){
+                networkErrorDialog.show();
+            } else {
+                Toast.makeText(SampleUploadActivity.this, "There is an error with uploading the sample", Toast.LENGTH_LONG).show();
+                Log.e("SampleUpload", "Error: " + ex.getMessage() + " " + ex.getClass().toString());
+            }
+        }
+        catch (Exception ex) {
+            Toast.makeText(SampleUploadActivity.this, "There is an error with uploading the sample", Toast.LENGTH_LONG).show();
+            Log.e("SampleUpload", "Error: " + ex.getMessage() + " " + ex.getClass().toString());
+        }
+        finally {
+            canLoad = true;
+            progressBar.setVisibility(View.GONE);
+        }
     }
 
     @Override

@@ -138,9 +138,6 @@ public class MainActivity extends AppCompatActivity {
 
                     View view = snackbar.getView();
                     CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) view.getLayoutParams();
-                    Rect rectangle = new Rect();
-                    Window window = getWindow();
-                    window.getDecorView().getWindowVisibleDisplayFrame(rectangle);
                     params.gravity = Gravity.TOP;
                     view.setLayoutParams(params);
 

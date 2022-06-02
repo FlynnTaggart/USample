@@ -5,7 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".SampleUploadActivity"
-    android:background="@color/black">
+    android:background="@color/black"
+    android:id="@+id/mainContent">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
