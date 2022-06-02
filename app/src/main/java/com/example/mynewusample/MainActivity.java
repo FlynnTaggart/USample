@@ -6,11 +6,17 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
+import androidx.core.widget.NestedScrollView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.Menu;
@@ -19,8 +25,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.widget.FrameLayout;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.example.mynewusample.model.SampleStructure;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
@@ -31,11 +39,20 @@ import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.FirebaseTooManyRequestsException;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -45,9 +62,17 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private String userID;
     private FirebaseUser user;
+    private StorageReference mStorageRef;
+    private ProgressBar progressBar;
+
     private AlertDialog networkErrorDialog;
 
     private boolean emailVerified;
+
+    private RecyclerView recyclerViewSamples;
+    private List<SampleStructure> samples;
+    private SamplesAdapter samplesAdapter;
+    private SwipeRefreshLayout swipeRefreshLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
         mStore = FirebaseFirestore.getInstance();
         user = mAuth.getCurrentUser();
         userID = user.getUid();
+        mStorageRef = FirebaseStorage.getInstance().getReference();
 
         if(mAuth.getCurrentUser() != null) {
             DocumentReference documentRef = mStore.collection("users").document(userID);
@@ -94,6 +120,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        progressBar = findViewById(R.id.progressBar);
+
+        recyclerViewSamples = findViewById(R.id.recyclerViewSamples);
+        recyclerViewSamples.setHasFixedSize(true);
+        recyclerViewSamples.setLayoutManager(new LinearLayoutManager(this));
+
+        swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
+        swipeRefreshLayout.setRefreshing(true);
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                newSampleListener();
+            }
+        });
+
+        samples = new ArrayList<SampleStructure>();
+        samplesAdapter = new SamplesAdapter(MainActivity.this, samples);
+        recyclerViewSamples.setAdapter(samplesAdapter);
+
+        newSampleListener();
+
         AlertDialog.Builder networkErrorBuilder = new AlertDialog.Builder(this);
         networkErrorBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
@@ -123,6 +170,50 @@ public class MainActivity extends AppCompatActivity {
         logOutDialog = LogOutBuilder.create();
     }
 
+    private void newSampleListener() {
+        if(mAuth.getCurrentUser() != null) {
+            mStore.collection("users").document(userID)
+                .collection("samples").orderBy("sampleName", Query.Direction.ASCENDING)
+                .addSnapshotListener(new EventListener<QuerySnapshot>() {
+                    @Override
+                    public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
+                        if (error != null) {
+                            swipeRefreshLayout.setRefreshing(false);
+                            Log.e("SampleList", "Error: " + error.getMessage() + " " + error.getClass().toString());
+                        }
+                        boolean dataChanged = false;
+                        for (DocumentChange documentChange : value.getDocumentChanges()) {
+                            if (documentChange.getType() == DocumentChange.Type.ADDED) {
+                                if (!sampleIsAdded(documentChange.getDocument().toObject(SampleStructure.class))) {
+                                    samples.add(documentChange.getDocument().toObject(SampleStructure.class));
+                                    dataChanged = true;
+                                }
+                            }
+                        }
+                        if (dataChanged) {
+                            samples.sort(new Comparator<SampleStructure>() {
+                                @Override
+                                public int compare(SampleStructure s1, SampleStructure s2) {
+                                    return s1.getSampleName().compareTo(s2.getSampleName());
+                                }
+                            });
+                            samplesAdapter.notifyDataSetChanged();
+                        }
+                        swipeRefreshLayout.setRefreshing(false);
+                    }
+            });
+        }
+    }
+
+    private boolean sampleIsAdded(SampleStructure sample) {
+        for(SampleStructure i : samples){
+            if(i.getSampleName().equals(sample.getSampleName())){
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
@@ -133,13 +224,21 @@ public class MainActivity extends AppCompatActivity {
                 user = mAuth.getCurrentUser();
                 emailVerified = user.isEmailVerified();
                 if(!getIntent().hasExtra("FromRegistration") && !emailVerified){
-                    Snackbar snackbar = Snackbar.make(MainActivity.this.findViewById(R.id.snackbarLayout), "You need to verify your email.", Snackbar.LENGTH_LONG);
+                    Snackbar snackbar = Snackbar.make(MainActivity.this.findViewById(R.id.mainContent), "You need to verify your email.", Snackbar.LENGTH_LONG);
                     snackbar.setTextColor(ContextCompat.getColor(MainActivity.this, R.color.white_tinted));
 
                     View view = snackbar.getView();
                     CoordinatorLayout.LayoutParams params = (CoordinatorLayout.LayoutParams) view.getLayoutParams();
                     params.gravity = Gravity.TOP;
+                    int px = (int) TypedValue.applyDimension(
+                            TypedValue.COMPLEX_UNIT_DIP,
+                            56,
+                            getResources().getDisplayMetrics()
+                    );
+                    params.topMargin = px;
                     view.setLayoutParams(params);
+
+                    snackbar.setAnchorView(findViewById(R.id.floating_action_button));
 
                     snackbar.setAction(R.string.snackbar_action_name, new View.OnClickListener() {
                         @Override
