@@ -46,7 +46,8 @@
         <androidx.cardview.widget.CardView
             android:layout_width="wrap_content"
             android:layout_height="56dp"
-            app:cardBackgroundColor="@color/black">
+            app:cardBackgroundColor="@color/black"
+            android:visibility="gone">
 
             <ImageView
                 android:id="@+id/imageViewPlayButton"
