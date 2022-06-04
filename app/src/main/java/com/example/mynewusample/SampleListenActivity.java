@@ -20,11 +20,13 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -85,6 +87,27 @@ public class SampleListenActivity extends AppCompatActivity {
         imageViewSampleCover = findViewById(R.id.imageViewSampleCover);
 //        imageViewEditName = findViewById(R.id.imageViewEditName);
         progressBar = findViewById(R.id.progressBar);
+        findViewById(R.id.appBarLayout).setOutlineProvider(null);
+
+        int px = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                400,
+                getResources().getDisplayMetrics()
+        );
+        LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) imageViewSampleCover.getLayoutParams();
+        int height = params.height;
+        imageViewSampleCover.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) imageViewSampleCover.getLayoutParams();
+                if(params.height == height){
+                    imageViewSampleCover.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px));
+                } else {
+                    imageViewSampleCover.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));
+                }
+            }
+        });
+
 
         mAuth = FirebaseAuth.getInstance();
         mStore = FirebaseFirestore.getInstance();
@@ -107,6 +130,8 @@ public class SampleListenActivity extends AppCompatActivity {
             if(intent.hasExtra("sampleCoverLink")){
                 sampleCoverLink = intent.getStringExtra("sampleCoverLink");
                 Picasso.get().load(sampleCoverLink)
+                        .resize(256, 256)
+                        .centerCrop(Gravity.BOTTOM)
                         .transform(new BlurTransformation(SampleListenActivity.this, 5, 1))
                         .error(R.drawable.default_sample_cover_01)
                         .placeholder(R.drawable.default_sample_cover_01)

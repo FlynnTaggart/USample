@@ -17,6 +17,7 @@
         <item name="popupTheme">@style/OptionsMenu</item>
         <item name="snackbarStyle">@style/Widget.App.Snackbar</item>
         <item name="snackbarButtonStyle">@style/Widget.App.SnackbarButton</item>
+        <item name="android:windowActionBarOverlay">true</item>
     </style>
 
     <style name="ToolbarTheme" parent="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
@@ -42,5 +43,11 @@
         <item name="colorPrimary">@color/orange_500</item>
         <item name="android:textColor">@color/white_tinted</item>
         <item name="colorOnSurface">@color/cardview_dark_background</item>
+    </style>
+
+    <style name="MyNewUSample.ToolbarTheme.Transparent" parent="Theme.MyNewUSample">
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="windowActionBarOverlay">true</item>
+        <item name="colorPrimary">@android:color/transparent</item>
     </style>
 </resources>
