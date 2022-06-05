@@ -12,6 +12,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import android.media.MediaPlayer;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -43,13 +45,22 @@ import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.masoudss.lib.SeekBarOnProgressChanged;
 import com.masoudss.lib.WaveformSeekBar;
 import com.squareup.picasso.Picasso;
+import com.vincan.medialoader.DefaultConfigFactory;
+import com.vincan.medialoader.DownloadManager;
+import com.vincan.medialoader.MediaLoader;
+import com.vincan.medialoader.MediaLoaderConfig;
+import com.vincan.medialoader.download.DownloadListener;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,6 +73,7 @@ public class SampleListenActivity extends AppCompatActivity {
     private TextInputLayout textFieldNote;
     private ImageView imageViewSampleCover;
     private ImageView imageViewEditName;
+    private ImageView imageViewPlayButton;
     private ProgressBar progressBar;
     private WaveformSeekBar waveformSeekBar;
 
@@ -80,18 +92,7 @@ public class SampleListenActivity extends AppCompatActivity {
 
     private AlertDialog networkErrorDialog;
 
-    class getSampleWaveform extends AsyncTask<String, Void, Void>{
-
-        @Override
-        protected Void doInBackground(String... urls) {
-            try{
-                waveformSeekBar.setSampleFrom(sampleLink);
-            } catch (Exception e){
-                e.printStackTrace();
-            }
-            return null;
-        }
-    }
+    SoundPlayer soundPlayer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -104,31 +105,16 @@ public class SampleListenActivity extends AppCompatActivity {
         textFieldName = findViewById(R.id.textFieldName);
         textFieldNote = findViewById(R.id.textFieldNote);
         imageViewSampleCover = findViewById(R.id.imageViewSampleCover);
-//        imageViewEditName = findViewById(R.id.imageViewEditName);
         progressBar = findViewById(R.id.progressBar);
         findViewById(R.id.appBarLayout).setOutlineProvider(null);
         waveformSeekBar = findViewById(R.id.waveformSeekBar);
+        imageViewPlayButton = findViewById(R.id.imageViewPlayButton);
 
         int px = (int) TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
                 400,
                 getResources().getDisplayMetrics()
         );
-
-        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) imageViewSampleCover.getLayoutParams();
-        int height = params.height;
-        imageViewSampleCover.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) imageViewSampleCover.getLayoutParams();
-                if(params.height == height){
-                    imageViewSampleCover.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px));
-                } else {
-                    imageViewSampleCover.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));
-                }
-            }
-        });
-
 
         mAuth = FirebaseAuth.getInstance();
         mStore = FirebaseFirestore.getInstance();
@@ -137,6 +123,12 @@ public class SampleListenActivity extends AppCompatActivity {
             userID = user.getUid();
         }
         mStorageRef = FirebaseStorage.getInstance().getReference();
+
+        soundPlayer = new SoundPlayer(this, waveformSeekBar, imageViewPlayButton);
+
+        MediaLoaderConfig mediaLoaderConfig = new MediaLoaderConfig.Builder(this).cacheRootDir(
+                DefaultConfigFactory.createCacheRootDir(this, getCacheDir() + "cached_audio")).build();
+        MediaLoader.getInstance(this).init(mediaLoaderConfig);
 
         Intent intent = getIntent();
         if(intent != null){
@@ -161,7 +153,36 @@ public class SampleListenActivity extends AppCompatActivity {
             }
             if(intent.hasExtra("sampleLink")){
                 sampleLink = intent.getStringExtra("sampleLink");
-                new getSampleWaveform().execute(sampleLink);
+                String proxyUrl = MediaLoader.getInstance(this).getProxyUrl(sampleLink);
+                DownloadManager.getInstance(this).enqueue(new DownloadManager.Request(sampleLink), new DownloadListener() {
+                    @Override
+                    public void onProgress(String url, File file, int progress) {
+                        if(progress == 100){
+                            Log.i("Dura", "Done!");
+                        }
+                        Log.i("Dura", String.valueOf(progress));
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+
+                    }
+                });
+                if(MediaLoader.getInstance(this).isCached(sampleLink)) {
+                    try {
+                        new getSampleWaveform().execute(proxyUrl);
+                        soundPlayer.setAudioSource(this, MediaLoader.getInstance(this).getCacheFile(sampleLink));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    try {
+                        new getSampleWaveform().execute(proxyUrl);
+                        soundPlayer.setAudioSource(proxyUrl);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             }
             if(intent.hasExtra("fileName")){
                 fileName = intent.getStringExtra("fileName");
@@ -179,6 +200,40 @@ public class SampleListenActivity extends AppCompatActivity {
             }
         });
 
+        Drawable pause = getDrawable(R.drawable.ic_round_pause_24);
+        Drawable play = imageViewPlayButton.getDrawable();
+        imageViewPlayButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(soundPlayer.isPrepared() && !soundPlayer.isPlaying()){
+                    imageViewPlayButton.setImageDrawable(pause);
+                    try {
+                        soundPlayer.play();
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
+                } else {
+                    imageViewPlayButton.setImageDrawable(play);
+                    try {
+                        soundPlayer.pause();
+                    }
+                    catch (Exception e){
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+
+        waveformSeekBar.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                soundPlayer.seekTo((long) Math.ceil(motionEvent.getX() / waveformSeekBar.getWidth() * soundPlayer.getDuration()));
+                waveformSeekBar.setProgress((long) Math.ceil(motionEvent.getX() / waveformSeekBar.getWidth() * 100));
+                return true;
+            }
+        });
+
         AlertDialog.Builder networkErrorBuilder = new AlertDialog.Builder(this);
         networkErrorBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
@@ -189,6 +244,33 @@ public class SampleListenActivity extends AppCompatActivity {
         networkErrorBuilder.setTitle("Network error").setMessage("There is a problem with your connection. Check your network settings.");
         networkErrorDialog = networkErrorBuilder.create();
     }
+
+    class getSampleWaveform extends AsyncTask<String, Void, Void>{
+
+        @Override
+        protected Void doInBackground(String... urls) {
+            try{
+                waveformSeekBar.setSampleFrom(sampleLink);
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
+    class prepareSample extends AsyncTask<Void, Void, Void>{
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            try{
+                soundPlayer.preparePlayer();
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
@@ -208,6 +290,30 @@ public class SampleListenActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStop() {
+        imageViewPlayButton.setImageDrawable(getDrawable(R.drawable.ic_round_play_arrow_24));
+        try {
+            soundPlayer.pause();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        soundPlayer.release();
+        super.onStop();
+    }
+
+    @Override
+    protected void onResume() {
+        soundPlayer = new SoundPlayer(this, waveformSeekBar, imageViewPlayButton);
+        try {
+            soundPlayer.setAudioSource(sampleLink);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        super.onResume();
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(@NonNull Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.top_app_bar_listen, menu);
@@ -224,29 +330,48 @@ public class SampleListenActivity extends AppCompatActivity {
                     DocumentReference documentRef = mStore.collection("users").document(userID)
                             .collection("samples").document(sampleName);
                     if(!sampleName.equals(textFieldName.getText().toString().trim())) {
-                        documentRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                        DocumentReference documentRefCheck = mStore.collection("users").document(userID)
+                                .collection("samples").document(textFieldName.getText().toString().trim());
+                        documentRefCheck.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
                             @Override
-                            public void onSuccess(Void unused) {
-                                sampleName = textFieldName.getText().toString().trim();
-                                note = textFieldNote.getEditText().getText().toString().trim();
-                                SampleStructure sample = new SampleStructure(sampleName, sampleLink,
-                                        fileName, sampleCoverLink, note);
-                                DocumentReference documentRef = mStore.collection("users").document(userID)
-                                        .collection("samples").document(sampleName);
-                                documentRef.set(sample).addOnSuccessListener(new OnSuccessListener<Void>() {
-                                    @Override
-                                    public void onSuccess(Void unused) {
-                                        showSampleUploadSuccessSnackbar();
+                            public void onSuccess(DocumentSnapshot documentSnapshot) {
+                                if (documentSnapshot.exists()) {
+                                    canLoad = true;
+                                    Toast.makeText(SampleListenActivity.this, "Sample with such name already exists.", Toast.LENGTH_SHORT).show();
+                                    textFieldName.setText(sampleName);
+                                    progressBar.setVisibility(View.GONE);
+                                } else {
+                                    documentRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                                        @Override
+                                        public void onSuccess(Void unused) {
+                                            sampleName = textFieldName.getText().toString().trim();
+                                            note = textFieldNote.getEditText().getText().toString().trim();
+                                            SampleStructure sample = new SampleStructure(sampleName, sampleLink,
+                                                    fileName, sampleCoverLink, note);
+                                            DocumentReference documentRef = mStore.collection("users").document(userID)
+                                                    .collection("samples").document(sampleName);
+                                            documentRef.set(sample).addOnSuccessListener(new OnSuccessListener<Void>() {
+                                                @Override
+                                                public void onSuccess(Void unused) {
+                                                    showSampleUploadSuccessSnackbar();
 
-                                        canLoad = true;
-                                        progressBar.setVisibility(View.GONE);
-                                    }
-                                }).addOnFailureListener(new OnFailureListener() {
-                                    @Override
-                                    public void onFailure(@NonNull Exception e) {
-                                        onSampleUpdateFailure(e);
-                                    }
-                                });
+                                                    canLoad = true;
+                                                    progressBar.setVisibility(View.GONE);
+                                                }
+                                            }).addOnFailureListener(new OnFailureListener() {
+                                                @Override
+                                                public void onFailure(@NonNull Exception e) {
+                                                    onSampleUpdateFailure(e);
+                                                }
+                                            });
+                                        }
+                                    }).addOnFailureListener(new OnFailureListener() {
+                                        @Override
+                                        public void onFailure(@NonNull Exception e) {
+                                            onSampleUpdateFailure(e);
+                                        }
+                                    });
+                                }
                             }
                         }).addOnFailureListener(new OnFailureListener() {
                             @Override
