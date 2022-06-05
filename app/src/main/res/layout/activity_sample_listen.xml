@@ -48,12 +48,32 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
-        <ImageView
-            android:id="@id/imageViewSampleCover"
-            android:src="@drawable/default_sample_cover_01"
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:scaleType="centerCrop"/>
+            android:layout_height="200dp">
+            <ImageView
+                android:id="@id/imageViewSampleCover"
+                android:src="@drawable/default_sample_cover_01"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:scaleType="centerCrop"/>
+
+            <com.masoudss.lib.WaveformSeekBar
+                android:layout_marginHorizontal="16dp"
+                android:layout_height="144dp"
+                android:layout_width="match_parent"
+                android:layout_alignParentBottom="true"
+                android:id="@+id/waveformSeekBar"
+                app:wave_max_progress="100"
+                app:wave_corner_radius="2dp"
+                app:wave_background_color="@color/white"
+                app:wave_progress_color="@color/orange_500"
+                app:wave_gravity="center"
+                app:wave_padding_top="2dp"
+                app:wave_padding_Bottom="2dp"
+                app:wave_padding_right="2dp"
+                app:wave_padding_left="2dp" />
+        </RelativeLayout>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"

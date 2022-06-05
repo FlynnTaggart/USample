@@ -5,12 +5,14 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
+import androidx.loader.content.AsyncTaskLoader;
 
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Rect;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
@@ -28,6 +30,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.example.mynewusample.model.SampleStructure;
@@ -44,12 +47,14 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.masoudss.lib.WaveformSeekBar;
 import com.squareup.picasso.Picasso;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import jp.wasabeef.picasso.transformations.BlurTransformation;
+import jp.wasabeef.picasso.transformations.GrayscaleTransformation;
 
 public class SampleListenActivity extends AppCompatActivity {
 
@@ -58,6 +63,7 @@ public class SampleListenActivity extends AppCompatActivity {
     private ImageView imageViewSampleCover;
     private ImageView imageViewEditName;
     private ProgressBar progressBar;
+    private WaveformSeekBar waveformSeekBar;
 
     private String sampleName = "";
     private String sampleLink = "";
@@ -74,6 +80,19 @@ public class SampleListenActivity extends AppCompatActivity {
 
     private AlertDialog networkErrorDialog;
 
+    class getSampleWaveform extends AsyncTask<String, Void, Void>{
+
+        @Override
+        protected Void doInBackground(String... urls) {
+            try{
+                waveformSeekBar.setSampleFrom(sampleLink);
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+            return null;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -88,13 +107,15 @@ public class SampleListenActivity extends AppCompatActivity {
 //        imageViewEditName = findViewById(R.id.imageViewEditName);
         progressBar = findViewById(R.id.progressBar);
         findViewById(R.id.appBarLayout).setOutlineProvider(null);
+        waveformSeekBar = findViewById(R.id.waveformSeekBar);
 
         int px = (int) TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
                 400,
                 getResources().getDisplayMetrics()
         );
-        LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) imageViewSampleCover.getLayoutParams();
+
+        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) imageViewSampleCover.getLayoutParams();
         int height = params.height;
         imageViewSampleCover.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -133,12 +154,14 @@ public class SampleListenActivity extends AppCompatActivity {
                         .resize(256, 256)
                         .centerCrop(Gravity.BOTTOM)
                         .transform(new BlurTransformation(SampleListenActivity.this, 5, 1))
-                        .error(R.drawable.default_sample_cover_01)
-                        .placeholder(R.drawable.default_sample_cover_01)
+                        .transform(new GrayscaleTransformation())
+                        .error(R.drawable.default_sample_cover_bw)
+                        .placeholder(R.drawable.default_sample_cover_bw)
                         .into(imageViewSampleCover);
             }
             if(intent.hasExtra("sampleLink")){
                 sampleLink = intent.getStringExtra("sampleLink");
+                new getSampleWaveform().execute(sampleLink);
             }
             if(intent.hasExtra("fileName")){
                 fileName = intent.getStringExtra("fileName");
