@@ -49,57 +49,81 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
         <RelativeLayout
+            android:id="@+id/relativeLayoutCover"
             android:layout_width="match_parent"
-            android:layout_height="200dp">
+            android:layout_height="236dp">
+
             <ImageView
-                android:id="@id/imageViewSampleCover"
-                android:src="@drawable/default_sample_cover_01"
+                android:id="@+id/imageViewSampleCover"
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:scaleType="centerCrop"/>
+                android:layout_height="236dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/default_sample_cover_bw" />
 
             <com.masoudss.lib.WaveformSeekBar
-                android:layout_marginHorizontal="16dp"
-                android:layout_height="144dp"
-                android:layout_width="match_parent"
-                android:layout_alignParentBottom="true"
                 android:id="@+id/waveformSeekBar"
-                app:wave_max_progress="100"
-                app:wave_corner_radius="2dp"
+                android:layout_width="match_parent"
+                android:layout_height="144dp"
+                android:layout_above="@id/linearLayoutTimer"
+                android:layout_marginHorizontal="16dp"
                 app:wave_background_color="@color/white"
-                app:wave_progress_color="@color/orange_500"
+                app:wave_corner_radius="2dp"
                 app:wave_gravity="center"
-                app:wave_padding_top="2dp"
+                app:wave_max_progress="100"
                 app:wave_padding_Bottom="2dp"
+                app:wave_padding_left="2dp"
                 app:wave_padding_right="2dp"
-                app:wave_padding_left="2dp" />
+                app:wave_padding_top="2dp"
+                app:wave_progress_color="@color/orange_500" />
+
+            <LinearLayout
+                android:id="@+id/linearLayoutTimer"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_alignParentBottom="true"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/textViewCurrentTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="4sp"
+                    android:gravity="center_vertical"
+                    android:text="0:00" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="16sp"
+                    android:layout_gravity="center_vertical"
+                    android:background="@color/white_tinted" />
+
+                <TextView
+                    android:id="@+id/textViewOverallTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4sp"
+                    android:gravity="center_vertical"
+                    android:text="0:37" />
+            </LinearLayout>
         </RelativeLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="16dp"
-            android:orientation="vertical">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="-8dp"
-                android:layout_marginBottom="6dp">
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="48dp"
-                    app:cardBackgroundColor="@color/black"
-                    android:layout_weight="1"
-                    android:layout_gravity="center">
-                    <ImageView
-                        android:id="@+id/imageViewPlayButton"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:layout_gravity="center"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/ic_round_play_arrow_24" />
-                </androidx.cardview.widget.CardView>
-            </LinearLayout>
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="16dp"
+            android:orientation="vertical"
+            android:clipChildren="false">
+            <Button
+                android:id="@+id/buttonPlay"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:foreground="?android:attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/ic_round_play_arrow_24"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="2dp"/>
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/textFieldNote"

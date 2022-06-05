@@ -8,12 +8,16 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
 import com.masoudss.lib.WaveformSeekBar;
+
+import org.w3c.dom.Text;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +36,9 @@ public class SoundPlayer extends Service {
 
     private Context mContext;
     private WaveformSeekBar waveformSeekBar;
-    private ImageView imageViewPlayButton;
+    private Button buttonPlay;
+    private TextView textViewCurrentTime;
+    private TextView textViewOverallTime;
 
     private boolean isPrepared = false;
 
@@ -44,10 +50,12 @@ public class SoundPlayer extends Service {
         this.waveformSeekBar = waveformSeekBar;
     }
 
-    public SoundPlayer(Context mContext, WaveformSeekBar waveformSeekBar, ImageView imageViewPlayButton) {
+    public SoundPlayer(Context mContext, WaveformSeekBar waveformSeekBar, Button buttonPlay, TextView textViewCurrentTime, TextView textViewOverallTime) {
         this.mContext = mContext;
         this.waveformSeekBar = waveformSeekBar;
-        this.imageViewPlayButton = imageViewPlayButton;
+        this.buttonPlay = buttonPlay;
+        this.textViewCurrentTime = textViewCurrentTime;
+        this.textViewOverallTime = textViewOverallTime;
     }
 
     public void preparePlayer() {
@@ -56,6 +64,7 @@ public class SoundPlayer extends Service {
             @Override
             public void onPrepared(MediaPlayer mp) {
                 isPrepared = true;
+                textViewOverallTime.setText(convertFromMSecToMinSec(getDuration()));
             }
         });
 
@@ -64,6 +73,7 @@ public class SoundPlayer extends Service {
             public void run() {
                 if (mediaPlayer.isPlaying()) {
                     waveformSeekBar.setProgress(100 * mediaPlayer.getCurrentPosition() / (float) getDuration());
+                    textViewCurrentTime.setText(convertFromMSecToMinSec(mediaPlayer.getCurrentPosition()));
                     handler.postDelayed(this, INTERVAL);
                 }
             }
@@ -74,7 +84,7 @@ public class SoundPlayer extends Service {
                 durationCounter.set(0);
                 waveformSeekBar.setProgress(0);
                 handler.removeCallbacks(runnable);
-                imageViewPlayButton.setImageDrawable(mContext.getDrawable(R.drawable.ic_round_play_arrow_24));
+                buttonPlay.setBackground(mContext.getDrawable(R.drawable.ic_round_play_arrow_24));
             }
         });
 
@@ -145,6 +155,7 @@ public class SoundPlayer extends Service {
     }
 
     public void seekTo(long msec){
+        textViewCurrentTime.setText(convertFromMSecToMinSec(msec));
         durationCounter.set((msec / INTERVAL) * INTERVAL);
         mediaPlayer.seekTo(msec, MediaPlayer.SEEK_CLOSEST_SYNC);
     }
@@ -170,4 +181,14 @@ public class SoundPlayer extends Service {
         super.onCreate();
     }
 
+    public static String convertFromMSecToMinSec(long msec){
+        int seconds = (int) (msec / 1000);
+        int minutes = seconds / 60;
+        seconds = seconds % 60;
+        if (minutes > 60){
+            return minutes / 60 + ":" + String.format("%02d", minutes % 60) + ":" + String.format("%02d", seconds);
+        } else {
+            return minutes % 60 + ":" +  String.format("%02d", seconds);
+        }
+    }
 }

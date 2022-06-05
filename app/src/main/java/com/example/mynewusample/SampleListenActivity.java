@@ -5,15 +5,14 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
-import androidx.loader.content.AsyncTaskLoader;
 
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.media.MediaPlayer;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -24,15 +23,14 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.mynewusample.model.SampleStructure;
@@ -50,7 +48,6 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.masoudss.lib.SeekBarOnProgressChanged;
 import com.masoudss.lib.WaveformSeekBar;
 import com.squareup.picasso.Picasso;
 import com.vincan.medialoader.DefaultConfigFactory;
@@ -66,16 +63,19 @@ import java.util.Map;
 
 import jp.wasabeef.picasso.transformations.BlurTransformation;
 import jp.wasabeef.picasso.transformations.GrayscaleTransformation;
+import jp.wasabeef.picasso.transformations.gpu.BrightnessFilterTransformation;
+import jp.wasabeef.picasso.transformations.gpu.VignetteFilterTransformation;
 
 public class SampleListenActivity extends AppCompatActivity {
 
     private EditText textFieldName;
     private TextInputLayout textFieldNote;
     private ImageView imageViewSampleCover;
-    private ImageView imageViewEditName;
-    private ImageView imageViewPlayButton;
+    private Button buttonPlay;
     private ProgressBar progressBar;
     private WaveformSeekBar waveformSeekBar;
+    private TextView textViewCurrentTime;
+    private TextView textViewOverallTime;
 
     private String sampleName = "";
     private String sampleLink = "";
@@ -108,7 +108,9 @@ public class SampleListenActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         findViewById(R.id.appBarLayout).setOutlineProvider(null);
         waveformSeekBar = findViewById(R.id.waveformSeekBar);
-        imageViewPlayButton = findViewById(R.id.imageViewPlayButton);
+        buttonPlay = findViewById(R.id.buttonPlay);
+        textViewCurrentTime = findViewById(R.id.textViewCurrentTime);
+        textViewOverallTime = findViewById(R.id.textViewOverallTime);
 
         int px = (int) TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
@@ -124,7 +126,7 @@ public class SampleListenActivity extends AppCompatActivity {
         }
         mStorageRef = FirebaseStorage.getInstance().getReference();
 
-        soundPlayer = new SoundPlayer(this, waveformSeekBar, imageViewPlayButton);
+        soundPlayer = new SoundPlayer(this, waveformSeekBar, buttonPlay, textViewCurrentTime, textViewOverallTime);
 
         MediaLoaderConfig mediaLoaderConfig = new MediaLoaderConfig.Builder(this).cacheRootDir(
                 DefaultConfigFactory.createCacheRootDir(this, getCacheDir() + "cached_audio")).build();
@@ -147,6 +149,8 @@ public class SampleListenActivity extends AppCompatActivity {
                         .centerCrop(Gravity.BOTTOM)
                         .transform(new BlurTransformation(SampleListenActivity.this, 5, 1))
                         .transform(new GrayscaleTransformation())
+                        .transform(new BrightnessFilterTransformation(this, -0.1f))
+                        .transform(new VignetteFilterTransformation(this, new PointF(0.5f, 0.5f), new float[]{0.f, 0.f, 0.f}, 0, 0.5f))
                         .error(R.drawable.default_sample_cover_bw)
                         .placeholder(R.drawable.default_sample_cover_bw)
                         .into(imageViewSampleCover);
@@ -201,12 +205,12 @@ public class SampleListenActivity extends AppCompatActivity {
         });
 
         Drawable pause = getDrawable(R.drawable.ic_round_pause_24);
-        Drawable play = imageViewPlayButton.getDrawable();
-        imageViewPlayButton.setOnClickListener(new View.OnClickListener() {
+        Drawable play = buttonPlay.getBackground();
+        buttonPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 if(soundPlayer.isPrepared() && !soundPlayer.isPlaying()){
-                    imageViewPlayButton.setImageDrawable(pause);
+                    buttonPlay.setBackground(pause);
                     try {
                         soundPlayer.play();
                     }
@@ -214,7 +218,7 @@ public class SampleListenActivity extends AppCompatActivity {
                         e.printStackTrace();
                     }
                 } else {
-                    imageViewPlayButton.setImageDrawable(play);
+                    buttonPlay.setBackground(play);
                     try {
                         soundPlayer.pause();
                     }
@@ -228,8 +232,9 @@ public class SampleListenActivity extends AppCompatActivity {
         waveformSeekBar.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
-                soundPlayer.seekTo((long) Math.ceil(motionEvent.getX() / waveformSeekBar.getWidth() * soundPlayer.getDuration()));
-                waveformSeekBar.setProgress((long) Math.ceil(motionEvent.getX() / waveformSeekBar.getWidth() * 100));
+                double newTime = Math.max(0.0, Math.min(1.0, motionEvent.getX() / waveformSeekBar.getWidth()));
+                soundPlayer.seekTo((long) Math.ceil(newTime * soundPlayer.getDuration()));
+                waveformSeekBar.setProgress((float) Math.ceil(newTime * 100));
                 return true;
             }
         });
@@ -291,7 +296,7 @@ public class SampleListenActivity extends AppCompatActivity {
 
     @Override
     protected void onStop() {
-        imageViewPlayButton.setImageDrawable(getDrawable(R.drawable.ic_round_play_arrow_24));
+        buttonPlay.setBackground(getDrawable(R.drawable.ic_round_play_arrow_24));
         try {
             soundPlayer.pause();
         }
@@ -304,7 +309,7 @@ public class SampleListenActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
-        soundPlayer = new SoundPlayer(this, waveformSeekBar, imageViewPlayButton);
+        soundPlayer = new SoundPlayer(this, waveformSeekBar, buttonPlay, textViewCurrentTime, textViewOverallTime);
         try {
             soundPlayer.setAudioSource(sampleLink);
         } catch (IOException e) {
