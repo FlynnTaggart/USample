@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".SampleListenActivity"
+    android:background="@color/black"
+    android:id="@+id/mainContent">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#AA000000">
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/topAppBar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:title="Upload your sample"
+            style="@style/MyNewUSample.ToolbarTheme.Transparent"
+            app:menu="@menu/top_app_bar_listen">
+            <EditText
+                android:id="@+id/textFieldName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Sample Name"
+                android:textColor="@color/white_tinted"
+                android:textSize="20sp"
+                android:background="@null"
+                android:focusable="false"
+                android:singleLine="true"
+                android:scrollHorizontally="true"
+                android:textColorHighlight="#653800"
+                android:gravity="clip_vertical" />
+        </com.google.android.material.appbar.MaterialToolbar>
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_marginTop="-7dp"
+            android:layout_marginBottom="-7dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            style="@style/Base.Widget.AppCompat.ProgressBar.Horizontal"
+            android:indeterminate="true"
+            android:visibility="gone"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <RelativeLayout
+            android:id="@+id/relativeLayoutCover"
+            android:layout_width="match_parent"
+            android:layout_height="236dp">
+
+            <ImageView
+                android:id="@+id/imageViewSampleCover"
+                android:layout_width="match_parent"
+                android:layout_height="236dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/default_sample_cover_bw" />
+
+            <com.masoudss.lib.WaveformSeekBar
+                android:id="@+id/waveformSeekBar"
+                android:layout_width="match_parent"
+                android:layout_height="144dp"
+                android:layout_above="@id/linearLayoutTimer"
+                android:layout_marginHorizontal="16dp"
+                app:wave_background_color="@color/white"
+                app:wave_corner_radius="2dp"
+                app:wave_gravity="center"
+                app:wave_max_progress="100"
+                app:wave_padding_Bottom="2dp"
+                app:wave_padding_left="2dp"
+                app:wave_padding_right="2dp"
+                app:wave_padding_top="2dp"
+                app:wave_progress_color="@color/orange_500" />
+
+            <LinearLayout
+                android:id="@+id/linearLayoutTimer"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_alignParentBottom="true"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/textViewCurrentTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="4sp"
+                    android:gravity="center_vertical"
+                    android:text="0:00" />
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="16sp"
+                    android:layout_gravity="center_vertical"
+                    android:background="@color/white_tinted" />
+
+                <TextView
+                    android:id="@+id/textViewOverallTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4sp"
+                    android:gravity="center_vertical"
+                    android:text="0:37" />
+            </LinearLayout>
+        </RelativeLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="16dp"
+            android:orientation="vertical"
+            android:clipChildren="false">
+            <Button
+                android:id="@+id/buttonPlay"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:foreground="?android:attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/ic_round_play_arrow_24"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="2dp"/>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/textFieldNote"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:hint="Enter a note if you want..."
+                app:expandedHintEnabled="false"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="top"
+                    android:textAlignment="gravity"
+                    android:scrollbars="vertical"
+                    android:textColor="@color/white_tinted"/>
+
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+    </LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
