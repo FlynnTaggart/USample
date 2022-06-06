@@ -374,6 +374,14 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
                     DocumentReference documentRef = mStore.collection("users").document(userID)
                             .collection("samples").document(sampleName);
                     if(!sampleName.equals(textFieldName.getText().toString().trim())) {
+                        if(textFieldName.getText().toString().trim().length() > 30){
+                            Toast.makeText(SampleListenActivity.this, "Sample name must not be longer than 30 characters.",
+                                    Toast.LENGTH_SHORT).show();
+                            canLoad = true;
+                            textFieldName.setText(sampleName);
+                            progressBar.setVisibility(View.GONE);
+                            return true;
+                        }
                         DocumentReference documentRefCheck = mStore.collection("users").document(userID)
                                 .collection("samples").document(textFieldName.getText().toString().trim());
                         documentRefCheck.get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {

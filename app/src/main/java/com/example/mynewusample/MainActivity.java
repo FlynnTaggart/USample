@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.ItemTouchHelper;
@@ -11,8 +12,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.TypedValue;
@@ -20,7 +24,12 @@ import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -163,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
                 final int position = viewHolder.getAdapterPosition();
                 final SampleStructure item = samplesAdapter.getData().get(position);
 
-                samplesAdapter.removeItem(position);
+                int fullPosition = samplesAdapter.removeItem(position);
 
                 Snackbar snackbar = Snackbar
                         .make(findViewById(R.id.mainContent), "Sample was removed.", Snackbar.LENGTH_LONG);
@@ -172,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
                 snackbar.setAction("Undo", new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        samplesAdapter.restoreItem(item, position);
+                        samplesAdapter.restoreItem(item, position, fullPosition);
                         recyclerViewSamples.scrollToPosition(position);
                     }
                 });
@@ -322,6 +331,7 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                 });
                                 samplesAdapter.notifyDataSetChanged();
+                                samplesAdapter.updateFullList();
                             }
                         }
                         swipeRefreshLayout.setRefreshing(false);
@@ -407,9 +417,70 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            View view = getCurrentFocus();
+            if (view instanceof EditText) {
+                Rect outRect = new Rect();
+                view.getGlobalVisibleRect(outRect);
+                if (!outRect.contains((int) event.getRawX(), (int) event.getRawY())) {
+                    view.clearFocus();
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+            }
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(@NonNull Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.top_app_bar_main, menu);
+
+        MenuItem menuItemSearch = menu.findItem(R.id.actionSearch);
+        SearchView searchView = (SearchView) menuItemSearch.getActionView();
+
+        searchView.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        searchView.setBackgroundColor(Color.parseColor("#00000000"));
+
+//        menuItemSearch.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+//            @Override
+//            public boolean onMenuItemActionExpand(MenuItem menuItem) {
+//                return true;
+//            }
+//
+//            @Override
+//            public boolean onMenuItemActionCollapse(MenuItem menuItem) {
+//                samplesAdapter.getFilter().filter("");
+//                return true;
+//            }
+//        });
+//
+//        searchView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+//            @Override
+//            public void onFocusChange(View view, boolean hasFocus) {
+//                if(hasFocus){
+//                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+//                    if(imm != null){
+//                        imm.showSoftInput(view.findFocus(), 0);
+//                    }
+//                }
+//            }
+//        });
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String s) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String s) {
+                samplesAdapter.getFilter().filter(s);
+                return false;
+            }
+        });
         return super.onCreateOptionsMenu(menu);
     }
 

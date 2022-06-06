@@ -15,7 +15,7 @@
             android:id="@+id/topAppBar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:theme="@style/ToolbarTheme"
+            android:background="@color/black"
             app:title="@string/app_name"
             style="@style/Theme.MyNewUSample"
             app:menu="@menu/top_app_bar_main"

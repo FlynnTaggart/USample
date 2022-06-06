@@ -29,6 +29,8 @@
                 android:textSize="20sp"
                 android:background="@null"
                 android:focusable="false"
+                android:singleLine="true"
+                android:scrollHorizontally="true"
                 android:textColorHighlight="#653800"
                 android:gravity="clip_vertical" />
         </com.google.android.material.appbar.MaterialToolbar>

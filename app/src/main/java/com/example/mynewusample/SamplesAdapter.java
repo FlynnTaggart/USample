@@ -6,6 +6,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -15,13 +17,45 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.mynewusample.model.SampleStructure;
 import com.squareup.picasso.Picasso;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.StringTokenizer;
 
-public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesViewHolder> {
+public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesViewHolder> implements Filterable {
 
-    Context mContext;
-    List<SampleStructure> samplesList;
+    private Context mContext;
+    private List<SampleStructure> samplesList;
+    private List<SampleStructure> samplesListFull;
+    private Filter samplesFilter = new Filter() {
+        @Override
+        protected FilterResults performFiltering(CharSequence constraint) {
+            List<SampleStructure> filteredList = new ArrayList<>();
+
+            if(constraint == null || constraint.length() == 0){
+                filteredList.addAll(samplesListFull);
+            } else {
+                String filterPattern = constraint.toString().toLowerCase().trim();
+
+                for(SampleStructure i : samplesListFull){
+                    if(i.getSampleName().toLowerCase().contains(filterPattern)){
+                        filteredList.add(i);
+                    }
+                }
+            }
+            FilterResults results = new FilterResults();
+            results.values = filteredList;
+            return results;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            samplesList.clear();
+            samplesList.addAll((List) filterResults.values);
+            notifyDataSetChanged();
+        }
+    };
 
     public interface OnItemClickListener {
         public void onItemClick(View view, int position);
@@ -30,6 +64,7 @@ public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesV
     public SamplesAdapter(Context mContext, List<SampleStructure> samplesList) {
         this.mContext = mContext;
         this.samplesList = samplesList;
+        this.samplesListFull = new ArrayList<>(samplesList);
     }
 
     @NonNull
@@ -69,12 +104,20 @@ public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesV
         return samplesList.size();
     }
 
-    public void removeItem(int position) {
-        samplesList.remove(position);
-        notifyItemRemoved(position);
+    public void updateFullList(){
+        this.samplesListFull = new ArrayList<>(samplesList);
     }
 
-    public void restoreItem(SampleStructure item, int position) {
+    public int removeItem(int position) {
+        int fullPosition = samplesListFull.indexOf(samplesList.get(position));
+        samplesListFull.remove(samplesList.get(position));
+        samplesList.remove(position);
+        notifyItemRemoved(position);
+        return fullPosition;
+    }
+
+    public void restoreItem(SampleStructure item, int position, int fullPosition) {
+        samplesListFull.add(fullPosition, item);
         samplesList.add(position, item);
         notifyItemInserted(position);
     }
@@ -97,6 +140,11 @@ public class SamplesAdapter extends RecyclerView.Adapter<SamplesAdapter.SamplesV
             out += Character.toUpperCase(firstWord.charAt(1));
         }
         return out;
+    }
+
+    @Override
+    public Filter getFilter() {
+        return samplesFilter;
     }
 
     public static class SamplesViewHolder extends RecyclerView.ViewHolder {
