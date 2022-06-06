@@ -1,4 +1,4 @@
-package com.example.mynewusample;
+package com.example.mynewusample.player;
 
 import android.app.Service;
 import android.content.Context;
@@ -7,23 +7,19 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
-import android.util.Log;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
+import com.example.mynewusample.R;
 import com.masoudss.lib.WaveformSeekBar;
-
-import org.w3c.dom.Text;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class SoundPlayer extends Service {
+public class SoundPlayer {
 
     private static final String ACTION_PLAY = "PLAY";
 
@@ -34,29 +30,16 @@ public class SoundPlayer extends Service {
 
     private final long INTERVAL = 32;
 
-    private Context mContext;
-    private WaveformSeekBar waveformSeekBar;
-    private Button buttonPlay;
-    private TextView textViewCurrentTime;
-    private TextView textViewOverallTime;
-
     private boolean isPrepared = false;
 
-    public SoundPlayer() {
-    }
+    private SoundPlayerOnPreparedListener onPreparedListener;
+    private SoundPlayerOnPauseListener onPauseListener;
+    private SoundPlayerOnPlayListener onPlayListener;
+    private SoundPlayerOnDurationProgressListener onDurationProgressListener;
+    private SoundPlayerOnCompleteListener onCompleteListener;
 
-    public SoundPlayer(Context mContext, WaveformSeekBar waveformSeekBar) {
-        this.mContext = mContext;
-        this.waveformSeekBar = waveformSeekBar;
-    }
+    private SoundPlayerOnSeekToListener onSeekToListener;
 
-    public SoundPlayer(Context mContext, WaveformSeekBar waveformSeekBar, Button buttonPlay, TextView textViewCurrentTime, TextView textViewOverallTime) {
-        this.mContext = mContext;
-        this.waveformSeekBar = waveformSeekBar;
-        this.buttonPlay = buttonPlay;
-        this.textViewCurrentTime = textViewCurrentTime;
-        this.textViewOverallTime = textViewOverallTime;
-    }
 
     public void preparePlayer() {
         mediaPlayer.prepareAsync();
@@ -64,7 +47,7 @@ public class SoundPlayer extends Service {
             @Override
             public void onPrepared(MediaPlayer mp) {
                 isPrepared = true;
-                textViewOverallTime.setText(convertFromMSecToMinSec(getDuration()));
+                onPreparedListener.onPrepared(SoundPlayer.this);
             }
         });
 
@@ -72,8 +55,7 @@ public class SoundPlayer extends Service {
             @Override
             public void run() {
                 if (mediaPlayer.isPlaying()) {
-                    waveformSeekBar.setProgress(100 * mediaPlayer.getCurrentPosition() / (float) getDuration());
-                    textViewCurrentTime.setText(convertFromMSecToMinSec(mediaPlayer.getCurrentPosition()));
+                    onDurationProgressListener.onDurationProgress(SoundPlayer.this, getDuration(), (long) mediaPlayer.getCurrentPosition());
                     handler.postDelayed(this, INTERVAL);
                 }
             }
@@ -81,10 +63,9 @@ public class SoundPlayer extends Service {
 
         mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             public void onCompletion(MediaPlayer mp) {
+                onCompleteListener.onComplete(SoundPlayer.this);
                 durationCounter.set(0);
-                waveformSeekBar.setProgress(0);
                 handler.removeCallbacks(runnable);
-                buttonPlay.setBackground(mContext.getDrawable(R.drawable.ic_round_play_arrow_24));
             }
         });
 
@@ -116,18 +97,21 @@ public class SoundPlayer extends Service {
 
     public void play() {
         mediaPlayer.start();
+        onPlayListener.onPlay(this);
 
         handler.postDelayed(runnable, INTERVAL);
     }
 
     public void pause() {
         mediaPlayer.pause();
+        onPauseListener.onPause(this);
     }
 
     public void stop() {
         mediaPlayer.stop();
         try {
             mediaPlayer.prepare();
+            onPreparedListener.onPrepared(this);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -155,7 +139,7 @@ public class SoundPlayer extends Service {
     }
 
     public void seekTo(long msec){
-        textViewCurrentTime.setText(convertFromMSecToMinSec(msec));
+        onSeekToListener.onSeekTo(this, msec);
         durationCounter.set((msec / INTERVAL) * INTERVAL);
         mediaPlayer.seekTo(msec, MediaPlayer.SEEK_CLOSEST_SYNC);
     }
@@ -164,22 +148,6 @@ public class SoundPlayer extends Service {
         return isPrepared;
     }
 
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        return super.onStartCommand(intent, flags, startId);
-    }
-
-    @Override
-    public void onCreate() {
-        preparePlayer();
-        super.onCreate();
-    }
 
     public static String convertFromMSecToMinSec(long msec){
         int seconds = (int) (msec / 1000);
@@ -190,5 +158,35 @@ public class SoundPlayer extends Service {
         } else {
             return minutes % 60 + ":" +  String.format("%02d", seconds);
         }
+    }
+
+    public SoundPlayer setOnPreparedListener(SoundPlayerOnPreparedListener onPreparedListener) {
+        this.onPreparedListener = onPreparedListener;
+        return this;
+    }
+
+    public SoundPlayer setOnPauseListener(SoundPlayerOnPauseListener onPauseListener) {
+        this.onPauseListener = onPauseListener;
+        return this;
+    }
+
+    public SoundPlayer setOnPlayListener(SoundPlayerOnPlayListener onPlayListener) {
+        this.onPlayListener = onPlayListener;
+        return this;
+    }
+
+    public SoundPlayer setOnDurationProgressListener(SoundPlayerOnDurationProgressListener onDurationProgressListener) {
+        this.onDurationProgressListener = onDurationProgressListener;
+        return this;
+    }
+
+    public SoundPlayer setOnCompleteListener(SoundPlayerOnCompleteListener onCompleteListener) {
+        this.onCompleteListener = onCompleteListener;
+        return this;
+    }
+
+    public SoundPlayer setOnSeekToListener(SoundPlayerOnSeekToListener onSeekToListener) {
+        this.onSeekToListener = onSeekToListener;
+        return this;
     }
 }

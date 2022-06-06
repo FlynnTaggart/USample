@@ -34,6 +34,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.mynewusample.model.SampleStructure;
+import com.example.mynewusample.player.SoundPlayer;
+import com.example.mynewusample.player.SoundPlayerOnCompleteListener;
+import com.example.mynewusample.player.SoundPlayerOnDurationProgressListener;
+import com.example.mynewusample.player.SoundPlayerOnPauseListener;
+import com.example.mynewusample.player.SoundPlayerOnPlayListener;
+import com.example.mynewusample.player.SoundPlayerOnPreparedListener;
+import com.example.mynewusample.player.SoundPlayerOnSeekToListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -66,7 +73,12 @@ import jp.wasabeef.picasso.transformations.GrayscaleTransformation;
 import jp.wasabeef.picasso.transformations.gpu.BrightnessFilterTransformation;
 import jp.wasabeef.picasso.transformations.gpu.VignetteFilterTransformation;
 
-public class SampleListenActivity extends AppCompatActivity {
+public class SampleListenActivity extends AppCompatActivity implements SoundPlayerOnCompleteListener,
+        SoundPlayerOnDurationProgressListener,
+        SoundPlayerOnPauseListener,
+        SoundPlayerOnPlayListener,
+        SoundPlayerOnPreparedListener,
+        SoundPlayerOnSeekToListener {
 
     private EditText textFieldName;
     private TextInputLayout textFieldNote;
@@ -92,7 +104,7 @@ public class SampleListenActivity extends AppCompatActivity {
 
     private AlertDialog networkErrorDialog;
 
-    SoundPlayer soundPlayer;
+    SoundPlayer soundPlayer = new SoundPlayer();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,7 +138,12 @@ public class SampleListenActivity extends AppCompatActivity {
         }
         mStorageRef = FirebaseStorage.getInstance().getReference();
 
-        soundPlayer = new SoundPlayer(this, waveformSeekBar, buttonPlay, textViewCurrentTime, textViewOverallTime);
+        soundPlayer.setOnCompleteListener(this)
+                .setOnDurationProgressListener(this)
+                .setOnPauseListener(this)
+                .setOnPlayListener(this)
+                .setOnPreparedListener(this)
+                .setOnSeekToListener(this);
 
         MediaLoaderConfig mediaLoaderConfig = new MediaLoaderConfig.Builder(this).cacheRootDir(
                 DefaultConfigFactory.createCacheRootDir(this, getCacheDir() + "cached_audio")).build();
@@ -209,23 +226,7 @@ public class SampleListenActivity extends AppCompatActivity {
         buttonPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(soundPlayer.isPrepared() && !soundPlayer.isPlaying()){
-                    buttonPlay.setBackground(pause);
-                    try {
-                        soundPlayer.play();
-                    }
-                    catch (Exception e){
-                        e.printStackTrace();
-                    }
-                } else {
-                    buttonPlay.setBackground(play);
-                    try {
-                        soundPlayer.pause();
-                    }
-                    catch (Exception e){
-                        e.printStackTrace();
-                    }
-                }
+                soundPlayer.toggle();
             }
         });
 
@@ -248,6 +249,38 @@ public class SampleListenActivity extends AppCompatActivity {
         networkErrorBuilder.setCancelable(true);
         networkErrorBuilder.setTitle("Network error").setMessage("There is a problem with your connection. Check your network settings.");
         networkErrorDialog = networkErrorBuilder.create();
+    }
+
+    @Override
+    public void onComplete(SoundPlayer player) {
+        waveformSeekBar.setProgress(0);
+        buttonPlay.setBackground(getDrawable(R.drawable.ic_round_play_arrow_24));
+    }
+
+    @Override
+    public void onDurationProgress(SoundPlayer player, Long duration, Long currentTimestamp) {
+        waveformSeekBar.setProgress(100 * currentTimestamp / (float) duration);
+        textViewCurrentTime.setText(SoundPlayer.convertFromMSecToMinSec(currentTimestamp));
+    }
+
+    @Override
+    public void onPause(SoundPlayer player) {
+        buttonPlay.setBackground(getDrawable(R.drawable.ic_round_play_arrow_24));
+    }
+
+    @Override
+    public void onPlay(SoundPlayer player) {
+        buttonPlay.setBackground(getDrawable(R.drawable.ic_round_pause_24));
+    }
+
+    @Override
+    public void onPrepared(SoundPlayer player) {
+        textViewOverallTime.setText(SoundPlayer.convertFromMSecToMinSec(player.getDuration()));
+    }
+
+    @Override
+    public void onSeekTo(SoundPlayer player, long msec) {
+        textViewCurrentTime.setText(SoundPlayer.convertFromMSecToMinSec(msec));
     }
 
     class getSampleWaveform extends AsyncTask<String, Void, Void>{
@@ -309,7 +342,13 @@ public class SampleListenActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
-        soundPlayer = new SoundPlayer(this, waveformSeekBar, buttonPlay, textViewCurrentTime, textViewOverallTime);
+        soundPlayer = new SoundPlayer();
+        soundPlayer.setOnCompleteListener(this)
+                .setOnDurationProgressListener(this)
+                .setOnPauseListener(this)
+                .setOnPlayListener(this)
+                .setOnPreparedListener(this)
+                .setOnSeekToListener(this);
         try {
             soundPlayer.setAudioSource(sampleLink);
         } catch (IOException e) {
