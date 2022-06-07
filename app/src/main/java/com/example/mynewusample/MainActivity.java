@@ -17,7 +17,10 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -71,6 +74,7 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
 
     private AlertDialog networkErrorDialog;
+    private AlertDialog accessPermissionDialog;
 
     private boolean emailVerified;
 
@@ -253,16 +257,30 @@ public class MainActivity extends AppCompatActivity {
         ItemTouchHelper itemTouchhelper = new ItemTouchHelper(swipeToDeleteCallback);
         itemTouchhelper.attachToRecyclerView(recyclerViewSamples);
 
-        AlertDialog.Builder networkErrorBuilder = new AlertDialog.Builder(this);
-        networkErrorBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+        createNetworkErrorDialog();
+        createLogOutDialog();
+        createAccessPermissionDialog();
+    }
+
+    private void createAccessPermissionDialog() {
+        AlertDialog.Builder LogOutBuilder = new AlertDialog.Builder(this);
+        LogOutBuilder.setPositiveButton("Give access", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                Intent permissionIntent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                startActivity(permissionIntent);
+            }
+        });
+        LogOutBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
                 dialog.cancel();
             }
         });
-        networkErrorBuilder.setCancelable(true);
-        networkErrorBuilder.setTitle("Network error").setMessage("There is a problem with your connection. Check your network settings.");
-        networkErrorDialog = networkErrorBuilder.create();
+        LogOutBuilder.setCancelable(true);
+        LogOutBuilder.setTitle("Files access").setMessage("For correct working USample requires all files access.");
+        accessPermissionDialog = LogOutBuilder.create();
+    }
 
+    private void createLogOutDialog() {
         AlertDialog.Builder LogOutBuilder = new AlertDialog.Builder(this);
         LogOutBuilder.setPositiveButton("Sign out", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
@@ -280,6 +298,18 @@ public class MainActivity extends AppCompatActivity {
         LogOutBuilder.setCancelable(true);
         LogOutBuilder.setTitle("Do you really want to sign out?").setMessage("");
         logOutDialog = LogOutBuilder.create();
+    }
+
+    private void createNetworkErrorDialog() {
+        AlertDialog.Builder networkErrorBuilder = new AlertDialog.Builder(this);
+        networkErrorBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                dialog.cancel();
+            }
+        });
+        networkErrorBuilder.setCancelable(true);
+        networkErrorBuilder.setTitle("Network error").setMessage("There is a problem with your connection. Check your network settings.");
+        networkErrorDialog = networkErrorBuilder.create();
     }
 
     public void onSampleDeleteError(Exception e) {
@@ -417,6 +447,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if(!Environment.isExternalStorageManager()){
+                accessPermissionDialog.show();
+            } else {
+                accessPermissionDialog.dismiss();
+            }
+        }
+    }
+
+    @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             View view = getCurrentFocus();
@@ -443,31 +485,6 @@ public class MainActivity extends AppCompatActivity {
 
         searchView.setImeOptions(EditorInfo.IME_ACTION_DONE);
         searchView.setBackgroundColor(Color.parseColor("#00000000"));
-
-//        menuItemSearch.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
-//            @Override
-//            public boolean onMenuItemActionExpand(MenuItem menuItem) {
-//                return true;
-//            }
-//
-//            @Override
-//            public boolean onMenuItemActionCollapse(MenuItem menuItem) {
-//                samplesAdapter.getFilter().filter("");
-//                return true;
-//            }
-//        });
-//
-//        searchView.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-//            @Override
-//            public void onFocusChange(View view, boolean hasFocus) {
-//                if(hasFocus){
-//                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-//                    if(imm != null){
-//                        imm.showSoftInput(view.findFocus(), 0);
-//                    }
-//                }
-//            }
-//        });
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
