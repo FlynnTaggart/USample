@@ -12,12 +12,16 @@ import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.PointF;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -53,17 +57,15 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.storage.FileDownloadTask;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageException;
 import com.google.firebase.storage.StorageReference;
 import com.masoudss.lib.WaveformSeekBar;
 import com.squareup.picasso.Picasso;
-import com.vincan.medialoader.DefaultConfigFactory;
-import com.vincan.medialoader.DownloadManager;
-import com.vincan.medialoader.MediaLoader;
-import com.vincan.medialoader.MediaLoaderConfig;
-import com.vincan.medialoader.download.DownloadListener;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -103,8 +105,11 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
     private boolean canLoad = true;
 
     private AlertDialog networkErrorDialog;
+    private AlertDialog sampleLoadingDialog;
+    private AlertDialog sampleErrorDialog;
 
-    SoundPlayer soundPlayer = new SoundPlayer();
+    private SoundPlayer soundPlayer = new SoundPlayer();
+    private File sampleLocalFile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,11 +129,9 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
         textViewCurrentTime = findViewById(R.id.textViewCurrentTime);
         textViewOverallTime = findViewById(R.id.textViewOverallTime);
 
-        int px = (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                400,
-                getResources().getDisplayMetrics()
-        );
+        createNetworkErrorDialog();
+        createSampleLoadingDialog();
+        createSampleErrorDialog();
 
         mAuth = FirebaseAuth.getInstance();
         mStore = FirebaseFirestore.getInstance();
@@ -145,21 +148,17 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
                 .setOnPreparedListener(this)
                 .setOnSeekToListener(this);
 
-        MediaLoaderConfig mediaLoaderConfig = new MediaLoaderConfig.Builder(this).cacheRootDir(
-                DefaultConfigFactory.createCacheRootDir(this, getCacheDir() + "cached_audio")).build();
-        MediaLoader.getInstance(this).init(mediaLoaderConfig);
-
         Intent intent = getIntent();
-        if(intent != null){
-            if(intent.hasExtra("sampleName")){
+        if (intent != null) {
+            if (intent.hasExtra("sampleName")) {
                 sampleName = intent.getStringExtra("sampleName");
                 textFieldName.setText(sampleName);
             }
-            if(intent.hasExtra("note")){
+            if (intent.hasExtra("note")) {
                 note = intent.getStringExtra("note");
                 textFieldNote.getEditText().setText(note);
             }
-            if(intent.hasExtra("sampleCoverLink")){
+            if (intent.hasExtra("sampleCoverLink")) {
                 sampleCoverLink = intent.getStringExtra("sampleCoverLink");
                 Picasso.get().load(sampleCoverLink)
                         .resize(256, 256)
@@ -172,48 +171,65 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
                         .placeholder(R.drawable.default_sample_cover_bw)
                         .into(imageViewSampleCover);
             }
-            if(intent.hasExtra("sampleLink")){
+            if (intent.hasExtra("fileName")) {
+                fileName = intent.getStringExtra("fileName");
+            }
+            if (intent.hasExtra("sampleLink")) {
                 sampleLink = intent.getStringExtra("sampleLink");
-                String proxyUrl = MediaLoader.getInstance(this).getProxyUrl(sampleLink);
-                DownloadManager.getInstance(this).enqueue(new DownloadManager.Request(sampleLink), new DownloadListener() {
-                    @Override
-                    public void onProgress(String url, File file, int progress) {
-                        if(progress == 100){
-                            Log.i("Dura", "Done!");
+                if (!isExternalStorageWritable() || !isExternalStorageReadable()) {
+                    sampleErrorDialog.show();
+                }
+                File directory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "/USample/");
+                if (!directory.exists()) {
+                    directory.mkdir();
+                }
+                sampleLocalFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "/USample/" + fileName);
+                if (!sampleLocalFile.exists()) {
+                    if (!isNetworkAvailable()) {
+                        sampleErrorDialog.show();
+                    } else {
+                        sampleLocalFile.delete();
+                        try {
+                            sampleLocalFile.createNewFile();
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-                        Log.i("Dura", String.valueOf(progress));
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-
-                    }
-                });
-                if(MediaLoader.getInstance(this).isCached(sampleLink)) {
-                    try {
-                        new getSampleWaveform().execute(proxyUrl);
-                        soundPlayer.setAudioSource(this, MediaLoader.getInstance(this).getCacheFile(sampleLink));
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        sampleLoadingDialog.show();
+                        final StorageReference sampleRef = mStorageRef.child("users/" + userID + "/samples/" + fileName);
+                        sampleRef.getFile(sampleLocalFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                            @Override
+                            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                sampleLoadingDialog.dismiss();
+                                Toast.makeText(SampleListenActivity.this, "Your sample has been saved to " + directory.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                                try {
+                                    new getSampleWaveform().execute(sampleLocalFile);
+                                    soundPlayer.setAudioSource(sampleLocalFile.getAbsolutePath());
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }).addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                onSampleDownloadFailure(e);
+                            }
+                        });
                     }
                 } else {
                     try {
-                        new getSampleWaveform().execute(proxyUrl);
-                        soundPlayer.setAudioSource(proxyUrl);
+                        new getSampleWaveform().execute(sampleLocalFile);
+                        soundPlayer.setAudioSource(sampleLocalFile.getAbsolutePath());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-            }
-            if(intent.hasExtra("fileName")){
-                fileName = intent.getStringExtra("fileName");
             }
         }
 
         textFieldName.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean hasFocus) {
-                if(!hasFocus){
+                if (!hasFocus) {
                     textFieldName.setSelectAllOnFocus(false);
                     view.setFocusable(false);
                     view.setFocusableInTouchMode(false);
@@ -221,8 +237,6 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
             }
         });
 
-        Drawable pause = getDrawable(R.drawable.ic_round_pause_24);
-        Drawable play = buttonPlay.getBackground();
         buttonPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -239,7 +253,18 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
                 return true;
             }
         });
+    }
 
+    private void createSampleLoadingDialog() {
+        AlertDialog.Builder sampleLoadingBuilder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = getLayoutInflater();
+        sampleLoadingBuilder.setView(inflater.inflate(R.layout.dialog_loading_sample, null));
+        sampleLoadingBuilder.setCancelable(false);
+        sampleLoadingBuilder.setTitle("Please wait...");
+        sampleLoadingDialog = sampleLoadingBuilder.create();
+    }
+
+    private void createNetworkErrorDialog() {
         AlertDialog.Builder networkErrorBuilder = new AlertDialog.Builder(this);
         networkErrorBuilder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
@@ -249,6 +274,50 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
         networkErrorBuilder.setCancelable(true);
         networkErrorBuilder.setTitle("Network error").setMessage("There is a problem with your connection. Check your network settings.");
         networkErrorDialog = networkErrorBuilder.create();
+    }
+
+    private void createSampleErrorDialog() {
+        AlertDialog.Builder sampleErrorBuilder = new AlertDialog.Builder(this);
+        sampleErrorBuilder.setPositiveButton("Go back", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                dialog.cancel();
+                onBackPressed();
+            }
+        });
+        sampleErrorBuilder.setCancelable(true);
+        sampleErrorBuilder.setTitle("Error").setMessage("There is a problem with downloading the sample.");
+        sampleErrorDialog = sampleErrorBuilder.create();
+        sampleErrorDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialogInterface) {
+                dialogInterface.cancel();
+                onBackPressed();
+            }
+        });
+        sampleErrorDialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialogInterface) {
+                dialogInterface.cancel();
+                onBackPressed();
+            }
+        });
+    }
+
+    public boolean isExternalStorageWritable() {
+        String state = Environment.getExternalStorageState();
+        return Environment.MEDIA_MOUNTED.equals(state);
+    }
+
+    public boolean isExternalStorageReadable() {
+        String state = Environment.getExternalStorageState();
+        return Environment.MEDIA_MOUNTED.equals(state) || Environment.MEDIA_MOUNTED_READ_ONLY.equals(state);
+    }
+
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 
     @Override
@@ -283,32 +352,18 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
         textViewCurrentTime.setText(SoundPlayer.convertFromMSecToMinSec(msec));
     }
 
-    class getSampleWaveform extends AsyncTask<String, Void, Void>{
+    class getSampleWaveform extends AsyncTask<File, Void, Void> {
 
         @Override
-        protected Void doInBackground(String... urls) {
-            try{
-                waveformSeekBar.setSampleFrom(sampleLink);
-            } catch (Exception e){
+        protected Void doInBackground(File... files) {
+            try {
+                waveformSeekBar.setSampleFrom(files[0]);
+            } catch (Exception e) {
                 e.printStackTrace();
             }
             return null;
         }
     }
-
-    class prepareSample extends AsyncTask<Void, Void, Void>{
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-            try{
-                soundPlayer.preparePlayer();
-            } catch (Exception e){
-                e.printStackTrace();
-            }
-            return null;
-        }
-    }
-
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
@@ -332,8 +387,7 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
         buttonPlay.setBackground(getDrawable(R.drawable.ic_round_play_arrow_24));
         try {
             soundPlayer.pause();
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
         soundPlayer.release();
@@ -350,7 +404,7 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
                 .setOnPreparedListener(this)
                 .setOnSeekToListener(this);
         try {
-            soundPlayer.setAudioSource(sampleLink);
+            soundPlayer.setAudioSource(sampleLocalFile.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -368,13 +422,13 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         switch (item.getItemId()) {
             case R.id.actionUpdate:
-                if(canLoad){
+                if (canLoad) {
                     canLoad = false;
                     progressBar.setVisibility(View.VISIBLE);
                     DocumentReference documentRef = mStore.collection("users").document(userID)
                             .collection("samples").document(sampleName);
-                    if(!sampleName.equals(textFieldName.getText().toString().trim())) {
-                        if(textFieldName.getText().toString().trim().length() > 30){
+                    if (!sampleName.equals(textFieldName.getText().toString().trim())) {
+                        if (textFieldName.getText().toString().trim().length() > 30) {
                             Toast.makeText(SampleListenActivity.this, "Sample name must not be longer than 30 characters.",
                                     Toast.LENGTH_SHORT).show();
                             canLoad = true;
@@ -458,7 +512,7 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
                 textFieldName.requestFocus();
                 getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                 InputMethodManager inputMethodManager =
-                        (InputMethodManager)getSystemService(Context.INPUT_METHOD_SERVICE);
+                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 inputMethodManager.toggleSoftInputFromWindow(
                         findViewById(R.id.mainContent).getApplicationWindowToken(),
                         InputMethodManager.SHOW_FORCED, 0);
@@ -469,28 +523,52 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
     }
 
 
-    public void onSampleUpdateFailure(Exception e){
-        try{
+    public void onSampleUpdateFailure(Exception e) {
+        try {
             throw e;
-        }
-        catch (FirebaseNetworkException ex){
+        } catch (FirebaseNetworkException ex) {
             networkErrorDialog.show();
-        }
-        catch (FirebaseFirestoreException ex){
-            if(ex.getCode() == FirebaseFirestoreException.Code.UNAVAILABLE){
+        } catch (FirebaseFirestoreException ex) {
+            if (ex.getCode() == FirebaseFirestoreException.Code.UNAVAILABLE) {
                 networkErrorDialog.show();
             } else {
-                Toast.makeText(SampleListenActivity.this, "There is an error with updating the sample info", Toast.LENGTH_LONG).show();
+                Toast.makeText(SampleListenActivity.this, "There is an error with updating the sample info.", Toast.LENGTH_LONG).show();
                 Log.e("SampleUpload", "Error: " + ex.getMessage() + " " + ex.getClass().toString());
             }
-        }
-        catch (Exception ex) {
-            Toast.makeText(SampleListenActivity.this, "There is an error with updating the sample info", Toast.LENGTH_LONG).show();
+        } catch (Exception ex) {
+            Toast.makeText(SampleListenActivity.this, "There is an error with updating the sample info.", Toast.LENGTH_LONG).show();
             Log.e("SampleUpload", "Error: " + ex.getMessage() + " " + ex.getClass().toString());
-        }
-        finally {
+        } finally {
             canLoad = true;
             progressBar.setVisibility(View.GONE);
+        }
+    }
+
+    public void onSampleDownloadFailure(Exception e) {
+        try {
+            throw e;
+        } catch (FirebaseNetworkException ex) {
+            sampleErrorDialog.show();
+        } catch (StorageException ex) {
+            if(ex.getCause().getClass().equals(FileNotFoundException.class)){
+                Toast.makeText(SampleListenActivity.this, "There is an error with downloading the sample.", Toast.LENGTH_LONG).show();
+                Log.e("SampleDownload", "Error: " + ex.getCause().getMessage() + " " + ex.getCause().getClass().toString());
+            } else {
+                Toast.makeText(SampleListenActivity.this, "There is an error with downloading the sample.", Toast.LENGTH_LONG).show();
+                Log.e("SampleDownload", "Error: " + ex.getMessage() + " " + ex.getClass().toString());
+            }
+        } catch (FirebaseFirestoreException ex) {
+            if (ex.getCode() == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                sampleErrorDialog.show();
+            } else {
+                Toast.makeText(SampleListenActivity.this, "There is an error with downloading the sample.", Toast.LENGTH_LONG).show();
+                Log.e("SampleDownload", "Error: " + ex.getMessage() + " " + ex.getClass().toString());
+            }
+        } catch (Exception ex) {
+            Toast.makeText(SampleListenActivity.this, "There is an error with downloading the sample.", Toast.LENGTH_LONG).show();
+            Log.e("SampleDownload", "Error: " + ex.getMessage() + " " + ex.getClass().toString());
+        } finally {
+            sampleLoadingDialog.dismiss();
         }
     }
 
@@ -505,14 +583,12 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
         Rect rectangle = new Rect();
         Window window = getWindow();
         window.getDecorView().getWindowVisibleDisplayFrame(rectangle);
-        int statusBarHeight = rectangle.top;
         Resources r = getResources();
-        int px = (int) TypedValue.applyDimension(
+        params.topMargin = (int) TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
                 56,
                 r.getDisplayMetrics()
         );
-        params.topMargin = px;
         view.setLayoutParams(params);
 
         snackbar.show();

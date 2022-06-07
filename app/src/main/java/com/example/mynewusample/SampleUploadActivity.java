@@ -12,6 +12,7 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.content.ContextCompat;
 
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -22,6 +23,8 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -34,6 +37,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.MimeTypeMap;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -62,10 +66,14 @@ import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Target;
 import com.yalantis.ucrop.UCrop;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 
 public class SampleUploadActivity extends AppCompatActivity {
 
@@ -296,6 +304,8 @@ public class SampleUploadActivity extends AppCompatActivity {
                 } else {
                     final StorageReference sampleRef = mStorageRef.child("users/" + userID + "/samples/" + fileName);
                     final StorageReference coverRef = mStorageRef.child("users/" + userID + "/covers/" + cutFileExtensionFromFileName(fileName) + ".jpg");
+                    copySampleFile(SampleUploadActivity.this, sampleFile.getPath(), sampleFile,
+                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC) + "/USample/", fileName);
                     StorageTask sampleUploadTask = sampleRef.putFile(sampleFile).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                         @Override
                         public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
@@ -381,6 +391,112 @@ public class SampleUploadActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+   // This code i got from https://stackoverflow.com/a/47668032/13296071 and it's amazing
+    private static boolean isVirtualFile(Context context, Uri uri) {
+        if (!DocumentsContract.isDocumentUri(context, uri)) {
+            return false;
+        }
+        Cursor cursor = context.getContentResolver().query(
+                uri,
+                new String[]{DocumentsContract.Document.COLUMN_FLAGS},
+                null, null, null);
+        int flags = 0;
+        if (cursor.moveToFirst()) {
+            flags = cursor.getInt(0);
+        }
+        cursor.close();
+        return (flags & DocumentsContract.Document.FLAG_VIRTUAL_DOCUMENT) != 0;
+    }
+
+    private static String getMimeType(String url) {
+        String type = null;
+        String extension = MimeTypeMap.getFileExtensionFromUrl(url);
+        if (extension != null) {
+            type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+        }
+        return type;
+    }
+
+    private static InputStream getInputStreamForVirtualFile(Context context, Uri uri, String mimeTypeFilter)
+            throws IOException {
+
+        ContentResolver resolver = context.getContentResolver();
+        String[] openableMimeTypes = resolver.getStreamTypes(uri, mimeTypeFilter);
+        if (openableMimeTypes == null || openableMimeTypes.length < 1) {
+            throw new FileNotFoundException();
+        }
+        return resolver.openTypedAssetFileDescriptor(uri, openableMimeTypes[0], null)
+                .createInputStream();
+    }
+
+    public static boolean copySampleFile(Context context, String name, Uri sourceUri, String destinationDir, String destFileName) {
+
+        BufferedInputStream bis = null;
+        BufferedOutputStream bos = null;
+        InputStream input = null;
+        boolean hasError = false;
+
+        try {
+            if (isVirtualFile(context, sourceUri)) {
+                input = getInputStreamForVirtualFile(context, sourceUri, getMimeType(name));
+            } else {
+                input = context.getContentResolver().openInputStream(sourceUri);
+            }
+
+            boolean directorySetupResult;
+            File destDir = new File(destinationDir);
+            if (!destDir.exists()) {
+                directorySetupResult = destDir.mkdirs();
+            } else if (!destDir.isDirectory()) {
+                directorySetupResult = replaceFileWithDir(destinationDir);
+            } else {
+                directorySetupResult = true;
+            }
+
+            if (!directorySetupResult) {
+                hasError = true;
+            } else {
+                String destination = destinationDir + File.separator + destFileName;
+                int originalSize = input.available();
+
+                bis = new BufferedInputStream(input);
+                bos = new BufferedOutputStream(new FileOutputStream(destination));
+                byte[] buf = new byte[originalSize];
+                bis.read(buf);
+                do {
+                    bos.write(buf);
+                } while (bis.read(buf) != -1);
+            }
+        } catch (Exception e) {
+            Log.e("File copying", "Error: " + e.getMessage() + " " + e.getClass());
+            e.printStackTrace();
+            hasError = true;
+        } finally {
+            try {
+                if (bos != null) {
+                    bos.flush();
+                    bos.close();
+                }
+            } catch (Exception ignored) { }
+        }
+        return !hasError;
+    }
+
+    private static boolean replaceFileWithDir(String path) {
+        File file = new File(path);
+        if (!file.exists()) {
+            if (file.mkdirs()) {
+                return true;
+            }
+        } else if (file.delete()) {
+            File folder = new File(path);
+            if (folder.mkdirs()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void showSampleUploadSuccessSnackbar() {
