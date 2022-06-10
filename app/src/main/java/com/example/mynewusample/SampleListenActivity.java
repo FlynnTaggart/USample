@@ -408,6 +408,19 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        DocumentReference documentRef = mStore.collection("users").document(userID)
+                .collection("samples").document(sampleName);
+        note = textFieldNote.getEditText().getText().toString().trim();
+        Map<String, Object> sample = new HashMap<>();
+        sample.put("note", note);
+        documentRef.update(sample).addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void unused) {
+                canLoad = true;
+            }
+        });
+
         super.onResume();
     }
 
@@ -431,6 +444,13 @@ public class SampleListenActivity extends AppCompatActivity implements SoundPlay
                         if (textFieldName.getText().toString().trim().length() > 30) {
                             Toast.makeText(SampleListenActivity.this, "Sample name must not be longer than 30 characters.",
                                     Toast.LENGTH_SHORT).show();
+                            canLoad = true;
+                            textFieldName.setText(sampleName);
+                            progressBar.setVisibility(View.GONE);
+                            return true;
+                        }
+                        if(!isNetworkAvailable()){
+                            networkErrorDialog.show();
                             canLoad = true;
                             textFieldName.setText(sampleName);
                             progressBar.setVisibility(View.GONE);
